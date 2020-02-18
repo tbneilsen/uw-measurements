@@ -17,6 +17,12 @@ import byuarglib as byu
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fftpack import ifft
+
+import sys
+sys.path.insert(1, "C:\Users\cvong\Box\UW Research\Code\python-plotting-lib")
+from fig_defaults import set_defaults as set_fig_defaults
+
+_ = set_fig_defaults("paper")
 ######################################
 ########### Formatting ###############
 #loaded_signal = byu.binfileload(path, IDname, IDnum, CHnum)
