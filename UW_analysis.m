@@ -11,7 +11,9 @@ clear all; close all; clc
 %only file numbers in IDnum will be analyzed.
 all_files = false;
 num_files = 20;
-IDnum = [2, 3, 4, 11];
+IDnum = [2];
+
+ambient = 1;
 
 % If all_files is false and the files selected are to be cross-correlated
 % and time averaged, XandA should be set to true.
@@ -47,6 +49,8 @@ else
         output(n,:) = binfileload(path,'ID', IDnum(n), 1);
 
     end
+    
+    amb = binfileload(path,'ID', ambient,0);
 end
 
 disp('Data Loaded')
@@ -70,6 +74,8 @@ else
         [Gin(:,:,n),tin,fin] = specgram(input(n,:),fs,ns);
         [Gout(:,:,n),t,f] = specgram(output(n,:),fs,ns);
     end
+    
+    [Gamb,~,~] = specgram(amb,fs,ns);
 end
 
 disp('Autospectra Calculated')
@@ -78,16 +84,18 @@ disp('Autospectra Calculated')
 
 if all_files == true
     Cout = zeros(floor(N/ns), floor(ns/4), num_files); 
+    H = Cout;
     
     for n = 1:num_files
-        Cout(:,:,n) = UW_Sensitivity(f, Gout(:,:,n), 1, 4038, 4034);
+        [Cout(:,:,n),H(:,:,n)] = UW_Sensitivity(f, Gin(:,:,n), Gout(:,:,n), 1, Gamb, 4038, 4034);
     end
     
 else
     Cout = zeros(floor(N/ns), floor(ns/4), length(IDnum));
+    H = Cout;
     
     for n = 1:length(IDnum)
-        Cout(:,:,n) = UW_Sensitivity(f, Gout(:,:,n), 1, 4038, 4034);
+        [Cout(:,:,n),H(:,:,n)] = UW_Sensitivity(f, Gin(:,:,n), Gout(:,:,n), 1, Gamb, 4038, 4034);
     end
 end
         
@@ -106,6 +114,7 @@ if all_files == false
         end
         
         [Gavg,tavg,favg] = specgram(mean(time_avg),fs,ns);
+        Cavg = UW_Sensitivity(f, Gavg, 1, 4038, 4034);
         
         disp('Cross-correlated and Time-averaged')
     end
@@ -117,13 +126,15 @@ end
 
 if all_files == false
     if XandA == true
-        prompt = {'Do you want to see waveforms? Y/N [Y]: ','Do you want to see spectrograms? Y/N [Y]: '...
-            'Do you want to see the time averaged waveform? Y/N [Y]: ','Do you want to see the time averaged spectrogram? Y/N [Y]: '};
+        prompt = {'Do you want to see waveforms? Y/N [Y]: ','Do you want to see spectrograms? Y/N [Y]: ',...
+            'Do you want to see the Transfer Function? Y/N [Y]: ','Do you want to see the time averaged waveform? Y/N [Y]: ',...
+            'Do you want to see the time averaged spectrogram? Y/N [Y]: '};
         dlgtitle = 'Input';
         dims = [1 50];
         User_Input = inputdlg(prompt,dlgtitle,dims)
     else
-        prompt = {'Do you want to see waveforms? Y/N [Y]: ','Do you want to see spectrograms? Y/N [Y]: '};
+        prompt = {'Do you want to see waveforms? Y/N [Y]: ','Do you want to see spectrograms? Y/N [Y]: ',...
+            'Do you want to see the Transfer Function? Y/N [Y]: '};
         dlgtitle = 'Input';
         dims = [1 35];
         User_Input = inputdlg(prompt,dlgtitle,dims)
@@ -184,6 +195,8 @@ if string(User_Input(2)) == 'Y'
             shading interp;
             colorbar;
             colormap('jet')
+            ylim([50 max(f)/1000])
+            caxis([0 175])
             title(sprintf('generated signal ID:%02d',n))
             xlabel('time (s)')
             ylabel('frequency(kHz)')
@@ -193,6 +206,8 @@ if string(User_Input(2)) == 'Y'
             shading interp;
             colorbar;
             colormap('jet')
+            ylim([50 max(f)/1000])
+            caxis([0 175])
             title(sprintf('received signal ID:%02d',n))
             xlabel('time (s)')
             ylabel('frequency(kHz)')
@@ -204,6 +219,10 @@ if string(User_Input(2)) == 'Y'
             shading interp;
             colorbar;
             colormap('jet')
+            %force y axis and color axis to have coloration that makes
+            %sense
+            ylim([50 max(f)/1000])
+            caxis([0 175])
             title(sprintf('generated signal ID:%02d',IDnum(n)))
             xlabel('time (s)')
             ylabel('frequency(kHz)')
@@ -213,7 +232,54 @@ if string(User_Input(2)) == 'Y'
             shading interp;
             colorbar;
             colormap('jet')
+            ylim([50 max(f)/1000])
+            caxis([0 175])
             title(sprintf('received signal ID:%02d',IDnum(n)))
+            xlabel('time (s)')
+            ylabel('frequency(kHz)')
+        end
+    end
+end
+
+if string(User_Input(3)) == 'Y'
+    if all_files == true
+        
+        for n = 1:num_files
+
+            figure()
+            pcolor(t,f/1000,(20*log10(H(:,:,n))).')
+            shading interp;
+            colorbar;
+            colormap('jet')
+            title(sprintf('transfer function ID:%02d',n))
+            %force y axis and color axis to have coloration that makes
+            %sense
+            ylim([50 max(f)/1000])
+            caxis([-175 0])
+            xlabel('time (s)')
+            ylabel('frequency(kHz)')
+        end
+    else
+        for n = 1:length(IDnum)
+            figure()
+            pcolor(t,f/1000,(20*log10(H(:,:,n))).')
+            shading interp;
+            colorbar;
+            colormap('jet')
+            title(sprintf('transfer function ID:%02d',IDnum(n)))
+            ylim([50 max(f)/1000])
+            caxis([-175 0])
+            xlabel('time (s)')
+            ylabel('frequency(kHz)')
+            
+            figure()
+            pcolor(t,f/1000,(20*log10((Cout(:,:,n)./Gin(:,:,n)).^-1)).')
+            shading interp;
+            colorbar;
+            colormap('jet')
+            title(sprintf('(test) transfer function ID:%02d',IDnum(n)))
+            ylim([50 max(f)/1000])
+            caxis([-175 0])
             xlabel('time (s)')
             ylabel('frequency(kHz)')
         end
@@ -223,7 +289,7 @@ end
 if all_files == false
     if XandA == true
 
-        if string(User_Input(3)) == 'Y'
+        if string(User_Input(4)) == 'Y'
             time = (0:1/N:1-1/N);
             figure()
             plot(time*t_rec, mean(time_avg))
@@ -233,9 +299,9 @@ if all_files == false
         end
 
 
-        if string(User_Input(4)) == 'Y'
+        if string(User_Input(5)) == 'Y'
             figure()
-            pcolor(tavg,favg/1000,(20*log10(Gavg/1e-6)).')
+            pcolor(tavg,favg/1000,(20*log10(Cavg/1e-6)).')
             shading interp;
             colorbar;
             %caxis([0 100])
