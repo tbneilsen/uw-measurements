@@ -31,36 +31,44 @@ import TimeGate_UnderwaterTank as tg
 
 ###############################################################################
 ###############################################################################
+#when switching file name via copy/paste, must change forward and back slashes
 ###############################################################################
 ###############################################################################
-date = '2020-10-27'
-path1 = f'W:/uw-measurements-tank/{date}/{date}_scan'
-path2 = f'C:/Users/cvongsaw/Box/UW Research/Underwater Measurements/{date}/{date}_scan'
-path3 = 'W:/uw-measurements-tank/2021-1-20'
-path = path3
-scan = ''
-test = f'BK Consistency ({scan})'
-signal = 'Chirp 10-1500Hz 0.3V'
+date =  '2021-02-11' #scan 14,15,16 2 anechoic scan robot setup 60Hz-3kHz
+date2 = '2021-02-18' #scan 6 & 7 10k-100k AEgir 7 Ran receiving (Motion problems)
+date3 = '2021-02-19' #scan 3 maybe best anechoic test 10k-100k lots of clipping on cal signal still
+date4 = '2021-02-24' #scan 3,7,8(noise),9(noise)
+date = date4
+
+scan = '3'
+signal = 'Chirp 10-100kHz 3V'
+#desire is the list of all the scans you care to actually look at in this analysis
 #desire = [0,4,8] #3 point anechoic x-axis scan
 #desire = [0,6,12,18,24] #larger anechoic scan 5 point
-desire = [0,1,2,3,4,5]
-#legend=['Acry','Mid-Acry','Center','Mid-Anech','Anech']
-#legend = ['Acrylic','Center','Anechoic']
-legend = ['0','1','2','3','4','5']
-channels = [0] #recording channels
-fs = 150e3 #sampling frequency
-trec = 3 #time record length in sec
-N = fs*trec
-Acal = (0.6,2.14,0.283)
-Rcal = (0.6,2.06,0.283)
-font = 24
-depth = 0.567
+desire = [0,12,24]
+channels = [1] #recording channels of interest
+cal_channel = [1] #recorded calibration of interest (currently should only be len(cal_channel)=1)
+legend = ['gen(t)','cal(t)']
+#legend = ['Near Wall','Middle','Anechoic']
+test = f'Anechoic Test ({scan})'
+
+depth = 0.474 #total depth of the water int he tank
 temp = 19
+fs = 1e6 #sampling frequency
 
+startzero = 0.5 #leading zeros of the signal
+sigL = 2 #signal length
+trail = 0.5 #trailing zeros
 
+Acal = (0.6,2.14,depth/2)
+Rcal = (0.6,2.06,depth/2)
+year = date[0:4]
+path = f'W:/uw-measurements-tank/{year}/{date}/{date}_scan'
+trec = startzero + sigL + trail #time record length in sec
+N = fs*trec
+font = 24
 ###############################################################################
 ###############################################################################
-
 ##############################################################################
 ##############################################################################
 #load generated signal and calibration measurement
@@ -104,13 +112,13 @@ print(f'OASPL{legend} = {OASPL}')
 print('')
 print('plotting waveforms')
 print('')
-Time = len(ch0[:,0])/fs
+Time = len(cal[:,0])/fs
 t = np.arange(0,Time,1/fs)
 plt.figure()
-for i in range(len(desire)):
-    plt.plot(t,ch0[:,i])
-    plt.plot(t,ch1[:,i])
-plt.title(f'{test} {signal}')
+for i in range(len(cal_channel)):
+    plt.plot(t,gen)
+    plt.plot(t,cal[:,i]-np.mean(cal[:,i]))
+plt.title(f'{test} {signal} {date}')
 plt.xlabel('Time (s)')
 plt.ylabel('Amplitude (V)')
 plt.legend(legend)
@@ -119,21 +127,29 @@ plt.legend(legend)
 ##############################################################################
 ##############################################################################
 
-"""
 #need to update MeasGreen to handle various channels.and update the inputs
 #to use ch number instead of allsignals. 
 print('')
 print('')
 print('System Response...')
-sys,fsys = sys.SystemResponse(cal,gen,fs,Acal,Rcal)
+cal1 = np.ndarray.flatten(cal[:,cal_channel]) #obtain only the cal of interest for calculating the system response
+hsys,tsys,Hsys,fsys = sys.SystemResponse(cal1,gen,fs,Acal,Rcal,startzero)
+
+#from ESAUResponse import TankResponse
+#H_tank,f = TankResponse(ch2,gen,fs,Hsys)
+
+
+
+
+
+"""
 print('')
 print('')
 print('calculating Measuring Greens function for each point via deconvolution in freq domain...')
-
 H = np.empty((len(gen),len(desire)),dtype = complex)
 #for i in range(len(desire)):
 for idx,i in enumerate(desire):
-    H[:,idx],f = meas.MeasGreen(ch0[:,idx],gen,fs,sys,A[i],R[i])
+    H[:,idx],f = meas.MeasGreen(ch0[:,idx],gen,fs,hsys,A[i],R[i])
 
 #Obtain the single-sided Greens & Freq. Array
 Hss = 2*H[0:(int(len(H)/2)),:]
@@ -149,13 +165,15 @@ for i in range(len(desire)):
 plt.legend(legend)
 plt.xlabel('Samples')
 plt.ylabel('Amplitude (V)')
-plt.title(f'deconv. IR {test} {signal}')
+plt.title(f'IR {test} {signal}')
 #plt.xlim(0,8000)
 """
 
-##############################################################################
-##############################################################################
 
+
+##############################################################################
+##############################################################################
+"""
 print('')
 print('calculating IR & FRF from cross correlation')
 print('')
@@ -185,6 +203,20 @@ Time = len(x0[:,0])/fs
 t = np.arange(0,Time,1/fs)
 t = t*1000
 
+
+
+#need to EDIT with the below link
+#https://www.askpython.com/python/examples/rmse-root-mean-square-error
+plt.figure()
+for i in range(len(desire)):
+    error0 = np.abs(yss[:,i]-yss[:,0])/yss[:,0]*100
+    plt.plot(fss,error0)
+plt.title('Consistency of Measurements in Same position')
+plt.xlabel('Frequency (Hz')
+plt.ylabel('% Error')
+"""
+
+
 """
 plt.figure()
 for i in range(len(desire)):
@@ -212,7 +244,7 @@ y0 = np.empty((len(gen),len(desire)),dtype = complex)
 yss = np.empty((int(len(gen)/2),len(desire)),dtype = complex)
 
 for i in range(len(desire)):
-    xtemp = sci.correlate(ch0[:,i],cal[:,0],mode='full',method='auto')
+    xtemp = sci.correlate(ch2[:,i],cal[:,cal_channel[0]],mode='full',method='auto')
     x0[:,i] = xtemp[int(len(gen)-1):]
     y0[:,i] = np.fft.fft(x0[:,i])
     yss[:,i] = 2*y0[0:(int(len(y0[:,i])/2)),i]
@@ -236,6 +268,7 @@ for i in range(len(desire)):
     yssband[:,i] = yss[:idx,i] 
 """
 
+"""
 print('')
 print('plotting Impulse Response from xcorr..')
 print('')
@@ -258,8 +291,8 @@ for i in range(len(desire)):
 plt.legend(legend)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Amplitude (V)')
-plt.title(f'Xcorr ss FRF {test} {signal}')
-
+plt.title(f'ssFRF {test} {signal}')
+"""
 
 
 
