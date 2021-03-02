@@ -17,7 +17,7 @@ def timegateTank(AEgir_pose, Ran_pose, D=0.2,T=16.0,S=0.03, Coordinate='tank'):
     import numpy as np
     """
     Compute the first bounce reverberations of the BYU Hydroacoustics lab tank
-    in order to timegate signals. 
+    in order to timegate signals. Assumes a rectangular volume. 
     
     Parameters
     ----------
