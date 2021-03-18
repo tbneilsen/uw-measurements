@@ -68,19 +68,22 @@ def readLogFile():
                              
                               
     #Find bandwidth
-    substrB = "from "                  
+    substrBmin = "from "                  
     for line in mylines:          
         index = 0                 
         prev = 0                  
         while index < len(line):   
-            index = line.find(substrB, index) 
-         #   endIndex = line.find
+            index = line.find(substrBmin, index) 
+            if index != 0:
+                endIndex = line.find('.00')
+            endIndex = line.find('Hz')
             if index == -1:           
                 break                  
-            bandwidth = line[index+len(substrB):index+len(substrB)+11] + " - " + line[index+len(substrB)+15:index+len(substrB)+28]
-                                             
-            prev = index + len(substrB)       
-            index += len(substrB)     
+            bandwidth = line[index+len(substrBmin):endIndex] + " - " + line[index+len(substrBmin)+15:index+len(substrBmin)+28]
+            fmin = line[index+len(substrBmin):index+len(substrBmin)+8]                  
+               
+            prev = index + len(substrBmin)       
+            index += len(substrBmin)     
                           
 
     #Find water temperature
@@ -114,5 +117,6 @@ def readLogFile():
             index += len(substrL)      # increment the index by the length of substr.
                               # (Repeat until index > line length)
                               
-    print(bandwidth,waterTemp,sourcePos,receiverPos,samplingFreq,signalLength,waterDepth)
+    print(bandwidth,waterTemp,sourcePos,receiverPos,samplingFreq,waterDepth)
+    return bandwidth,waterTemp,sourcePos,receiverPos,samplingFreq,signalLength,waterDepth,fmin
                               
