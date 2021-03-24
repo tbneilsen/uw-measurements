@@ -6,7 +6,7 @@ Created on Wed Mar 10 15:11:18 2021
 """
 
 
-def readLogFile(filename):
+def readLogFile(filename,location):
     """
     Code Description:
         This code takes the log file output by ESAU and extracts important details.
@@ -20,12 +20,12 @@ def readLogFile(filename):
     ----------
     filename : String
         The name of the file (type .txt) from which you will pull the experiment parameters.
-        Start and end with quotes. For now, make sure file is in the same folder as code.
+        Start and end with quotes. 
         Ex: 'ID001_001log.txt'
         
     location : String
-        ***Currently taken out of code. To be fixed later. For now, just make sure file is in same file as code***
-        Working directory of file. Ex: 'D:/uw-acoustics-research/uw-meas-codes/underwater-measurements/analysis'
+        Directory of file that you want to pull
+        Ex: 'D:/uw-acoustics-research/uw-meas-codes/underwater-measurements/analysis/'
         IMPORTANT: Check direction of slashes 
         
     Returns
@@ -58,8 +58,10 @@ def readLogFile(filename):
 
     """
     
-    #import sys
-    #sys.path.insert(1,location)
+    #Call desired directory
+    import sys
+    sys.path.insert(1,location)
+    
     
     mylines = []
     with open(filename,"rt") as myfile: 
