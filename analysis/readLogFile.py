@@ -8,44 +8,59 @@ Created on Wed Mar 10 15:11:18 2021
 
 def readLogFile(filename):
     """
+    Code Description:
+        This code takes the log file output by ESAU and extracts important details.
+        Details described in Returns section.
+        The bandwidth, source and receiver positions, sampling frequency, water temperature,
+        and water depth are all printed at the end of the code.
+        Relevant variables are listed as returns.
+
 
     Parameters
     ----------
     filename : String
-        The name of the file from which you will pull the experiment parameters.
-        Start and end with quotes. Make sure file is in the same folder as code.
-        Ex: "ID001_001log.txt"
+        The name of the file (type .txt) from which you will pull the experiment parameters.
+        Start and end with quotes. For now, make sure file is in the same folder as code.
+        Ex: 'ID001_001log.txt'
         
-        Future modification: figure out how to call a file outside of the working directory
-
+    location : String
+        ***Currently taken out of code. To be fixed later. For now, just make sure file is in same file as code***
+        Working directory of file. Ex: 'D:/uw-acoustics-research/uw-meas-codes/underwater-measurements/analysis'
+        IMPORTANT: Check direction of slashes 
+        
     Returns
     -------
     freqMin : Float
-        The lowest frequency on the frequency range of the sweep.
+        The lowest frequency on the frequency range of the sweep. (Hz)
     freqMax : Float
-        The highest frequency on the frequency range of the sweep.
+        The highest frequency on the frequency range of the sweep. (Hz)
     tempWater : Float
-        DESCRIPTION.
+        Temperature of the water at the time of measurement (degrees Celsius)
     fs : Float
-        DESCRIPTION.
+        Sampling frequency of measurement (Hz)
     signalDuration : Float
-        DESCRIPTION.
+        Length of signal (s)
     hWater : Float
-        DESCRIPTION.
+        Height/depth of water in tank at time of measurement, measured in meters
+        from the bottom of the tank
     xSource : Float
-        DESCRIPTION.
+        X-position of source (m)
     ySource : Float
-        DESCRIPTION.
+        Y-position of source (m)
     zSource : Float
-        DESCRIPTION.
+        Z-position of source (m)
     xRec : Float
-        DESCRIPTION.
+        X-position of receiver (m)
     yRec : Float
-        DESCRIPTION.
+        Y-position of receiver (m)
     zRec : Float
-        DESCRIPTION.
+        Z-position of receiver (m)
 
     """
+    
+    #import sys
+    #sys.path.insert(1,location)
+    
     mylines = []
     with open(filename,"rt") as myfile: 
         for myline in myfile:
