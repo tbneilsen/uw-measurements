@@ -1,7 +1,53 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Mar 10 15:11:18 2021
 
-def readLogFile():
+@author: Corey Dobbs
+"""
+
+
+def readLogFile(filename):
+    """
+
+    Parameters
+    ----------
+    filename : String
+        The name of the file from which you will pull the experiment parameters.
+        Start and end with quotes. Make sure file is in the same folder as code.
+        Ex: "ID001_001log.txt"
+        
+        Future modification: figure out how to call a file outside of the working directory
+
+    Returns
+    -------
+    freqMin : Float
+        The lowest frequency on the frequency range of the sweep.
+    freqMax : Float
+        The highest frequency on the frequency range of the sweep.
+    tempWater : Float
+        DESCRIPTION.
+    fs : Float
+        DESCRIPTION.
+    signalDuration : Float
+        DESCRIPTION.
+    hWater : Float
+        DESCRIPTION.
+    xSource : Float
+        DESCRIPTION.
+    ySource : Float
+        DESCRIPTION.
+    zSource : Float
+        DESCRIPTION.
+    xRec : Float
+        DESCRIPTION.
+    yRec : Float
+        DESCRIPTION.
+    zRec : Float
+        DESCRIPTION.
+
+    """
     mylines = []
-    with open("ID001_001log.txt","rt") as myfile: 
+    with open(filename,"rt") as myfile: 
         for myline in myfile:
             mylines.append(myline.rstrip('\n'))
 
@@ -68,23 +114,28 @@ def readLogFile():
                              
                               
     #Find bandwidth
-    substrBmin = "from "                  
+    substrBmin = "from " 
+    substrBmax = "to"                 
     for line in mylines:          
         index = 0                 
         prev = 0                  
         while index < len(line):   
             index = line.find(substrBmin, index) 
-            if index != 0:
+            if index != 0 and index != -1:
                 endIndex = line.find('.00')
-            endIndex = line.find('Hz')
+                fmin = line[index+len(substrBmin):endIndex]
+                nextIndex = line.find(substrBmax,index)
+                endIndex2 = line.index('.00',nextIndex)
+                fmax = line[nextIndex+3:endIndex2]
+                break
             if index == -1:           
                 break                  
-            bandwidth = line[index+len(substrBmin):endIndex] + " - " + line[index+len(substrBmin)+15:index+len(substrBmin)+28]
-            fmin = line[index+len(substrBmin):index+len(substrBmin)+8]                  
+            
+            fmin = line[index+len(substrBmin):endIndex]                  
                
             prev = index + len(substrBmin)       
             index += len(substrBmin)     
-                          
+    bandwidth = fmin + "-" + fmax + " Hz"                      
 
     #Find water temperature
     substrT = "Temp: "                  
@@ -117,6 +168,22 @@ def readLogFile():
             index += len(substrL)      # increment the index by the length of substr.
                               # (Repeat until index > line length)
                               
-    print(bandwidth,waterTemp,sourcePos,receiverPos,samplingFreq,waterDepth)
-    return bandwidth,waterTemp,sourcePos,receiverPos,samplingFreq,signalLength,waterDepth,fmin
+    print("Bandwidth: ",bandwidth,'\n',"Water Temp: ",waterTemp,'\n',"Source Position: ",sourcePos,'\n',"Receiver Position: ",receiverPos,'\n',"Sampling Freq: ",samplingFreq,'\n',"Water Height: ",waterDepth)
+    
+    #Convert strings to variables (floats)
+    freqMin = float(fmin)
+    freqMax = float(fmax)
+    tempWater = float(waterTemp[0:-2])
+    fs = float(samplingFreq[0:-2])
+    Ns = float(signalLength)
+    signalDuration = Ns/fs
+    hWater = float(waterDepth[0:-1])
+    xSource = float(sourcePos[1:6])
+    ySource = float(sourcePos[7:12])
+    zSource = float(sourcePos[13:-1])
+    xRec = float(receiverPos[1:6])
+    yRec = float(receiverPos[7:12])
+    zRec = float(receiverPos[13:-1])
+    
+    return freqMin,freqMax,tempWater,fs,signalDuration,hWater,xSource,ySource,zSource,xRec,yRec,zRec
                               
