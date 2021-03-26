@@ -1,0 +1,78 @@
+Log file for ID003_001.bin (Single-Precision)
+
+02/26/21
+14:57:55
+Temp: 24.09 ºC
+Input Device M/N: USB-TC01 S/N: 1F2CC9E
+
+
+Temperature: 1.43E-2 mA and Pressure: 9.95E-3 mA
+
+Card: 4
+Channel: 1
+
+Signal Configuration: 
+Generated Chirp (linear) from 10000.00 Hz to 100000.00 Hz chirp
+Total length: 3000000   Leading 0's: 500000  Signal length: 2000000   Trailing 0's: 500000
+Number of channels loaded: 1.
+Loaded into channels 0.000000
+.
+Sampling frequency: 1000000 Hz.
+
+Forward Step Configuration:
+Number of averages: 1
+
+Output Settings:
+Card 0
+Enabled: TRUE  Gain: 3000 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Card 1
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Card 2
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Card 3
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+Enabled: FALSE  Gain: 300 mV
+
+
+Input Settings:
+Card 0
+Enabled: TRUE   Range: ±2 V   Termination: Low
+Enabled: TRUE   Range: ±10 V   Termination: High
+Enabled: FALSE   Range: ±10 V   Termination: High
+Enabled: FALSE   Range: ±10 V   Termination: High
+
+Card 1
+Enabled: FALSE   Range: ±10 V   Termination: High
+Enabled: FALSE   Range: ±10 V   Termination: High
+Enabled: FALSE   Range: ±10 V   Termination: High
+Enabled: FALSE   Range: ±10 V   Termination: High
+
+
+Sampling Frequency: 1000000 (Hz)
+Number of samples: 3000000
+
+
+
+TR IR Calculation:
+
+
+Focus Step Configuration:
+
+
+Comments:
+Source: 0.600,2.140,0.240,-0.000,-0.186,-0.000,0.000,-0.500,0.045,-1.574,-0.035,0.006
+
+Receiver: 0.600,0.890,0.240,0.000,-0.062,0.000,0.000,-0.500,0.085,0.031,2.199,2.229
+
+Water Level: 0.480000 m

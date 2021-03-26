@@ -243,64 +243,224 @@ def T60meas(rec, hsys, d = 0.6,c = 1478,zw = 1.5e6,zi= 3.26e6):
 
 
 
+def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478,walls='rigid',alpha=0,plot=True,pstyle='colored',num=4):
+    """
+    Parameters
+    ----------
+    perm:   float, Optional;
+            number of permutations to iterate through for each dimension x, y, z. 
+            Will end up with arrays for f and mode of size perm**3. Default is 10.
+    fmin:   float, Optional;
+            Minimum frequency of interest to reduce computation time and limit 
+            output array size. Defaults to 0 Hz
+    fmax:   float, Optional;
+            Maximum frequency of interest to reduce computation time and limit
+            output array size. Defaults to 1000 Hz
+    Lx:     float, Optional;
+            Width of water tank. Defalts as 1.22 m for the BYU Underwater tank. 
+            This could be altered when anechoic panels are placed in the tank. 
+    Ly:     float, Optional;
+            Length of water tank. Defalts as 3.66 m for the BYU Underwater tank. 
+            This could be altered when anechoic panels are placed in the tank. 
+    Lz:     float, Optional;
+            Depth of water in the tank. Defalts as 0.6 m for the BYU Underwater 
+            tank. This SHOULD be altered dependent on the current water level
+            in the tank. 
+    c:      float, Optional;
+            Speed of sound in water. This defaults to 1478 m/s following Garrett's
+            formula for speed of sound due to Depth, Salinity, and Temperature. 
+            This Default is set to the average room temperature of the water and
+            assuming near zero salinity over any depth the tank can handle. 
+    walls:  string, Optional;
+            Choice of hardness of tank walls. This chooses which model to compute. 
+            Defaults to walls='rigid' assuming perfectly rigid walls and floor 
+            with a pressure release surface.
+            ##########################UPDATE!!!!##################################
+            walls = 'lossy' assumes lossy walls due to absoptivity alpha. 
+            walls = 'multi' assumes lossy walls and requires multiple inputs for
+            alpha
+    alpha:  float; Optional;
+            Absorptivity of the walls if known. Otherwise assumes perfectly rigid. 
+    plot:   Boolian; Optional;
+            Choose whether or not to plot the EigenFunctions of the natural 
+            frequencies in the x-y, x-z, and y-z planes for the first "num" of 
+            modes. Default is set as True to plot. False will not plot.  
+    pstyle: string; Optional;
+            Defaults to 'colored' to plot contourf plots. Can also choose 'line'
+            to plot contour line plots. The latter is only recommended when solving
+            for very low frequencies. 
+    num:    float; Optional;
+            Number of modes to plot if Plot = True. Default is set to 4 modes for
+            each coordinate plane for a total of 12 plots (if is shows anything)
+           
+    Returns
+    -------
+    f:      ndarray of float;
+            Ordered Natural frequencies of the tank environment assuming Rigid 
+            walls and a pressure release surface.
+    mode:   ndarray of int;
+            Associated mode numbers of the natural frequencies of the tank. 
+    psi:    3D ndarray of float;
+            Ordered Eigenfunctions of the natural frequencies. 
 
-
-
-
-"""
-room modes as defined by Garrett
-"""
-import numpy as np
-
-D = 0.92                #water depth (m) where 0<= D <=1000m
-T = 19.0                #temperature in celcius where -2<= T <=24.5 
-S = 0.03                 #salinity where 0.030<= S <=0.042 grams salt per kg water              
-
-#sound speed (m/s), Cite Garrett valid w/in +-0.2m/s
-c = 1493 + 3*(T-10) - 0.006*(T-10)**2 - 0.04*(T-18)**2 + 1.2*(S-35) - 0.01*(T-18)*(S-35) + D/61
-
-print('c =', c, 'm/s')
-Lx = 1.22   #m
-Ly = 3.66   #m
-Lz = D      #depth in m
-
-
-n = 10
-mode = []
-f = []
-#eq. 13.12 Garrett altered by kz in 13.14 for pressure release boundary
-def TankMode(nx,ny,nz,Lx=Lx,Ly=Ly,Lz=Lz,c=c):
-    return c/(2)*((nx/Lx)**2 + (ny/Ly)**2 + ((2*nz-1)/(2*Lz))**2)**(1/2)
-
-for nx in range(0,n):
-    for ny in range(0,n):
-        for nz in range(0,n):
-            if TankMode(nx,ny,nz) <= 1000: 
-                f.append(TankMode(nx,ny,nz))
-                mode.append([nx,ny,nz])
-            while 100000 <= TankMode(nx,ny,nz) <= 300000: 
-                f.append(TankMode(nx,ny,nz))
-                mode.append([nx,ny,nz])
-
-f = np.array(f)
-mode = np.array(mode)
-idxs = np.argsort(f)
-f = f[idxs]
-mode = mode[idxs]
-
-print('# freq recorded in range',len(f))
-print('resonant freqs(Hz) =', f[1:6])#,f[500000:500010])
-print(mode[1:6])#,mode[500000:500010])
-
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Calculate the natural frequencies and room modes as defined by Garrett
+    eq. 13.12 altered by kz in 13.14 for pressure release boundary
+    (aka solutions to the eigenfrequencies for a rigid walled tank with pressure
+    release water-air interface)
+    
+    last modified 3/18/2021      
+    """
+    
+    import numpy as np
+    #if no input is given for alpha and it defaults to 0, then use rigid wall solution
+    if alpha == 0:
+        walls = 'rigid'
+    #Perfectly rigid wall solutio
+    if walls == 'rigid':
+        print('Solving for natural frequencies assuming perfectly Rigid walls')
+        #rigid wall solution for natural frequencies & Pressure release surface(nz component)
+        fN = lambda nx,ny,nz: c/(2)*np.sqrt((nx/Lx)**2 + (ny/Ly)**2 + ((2*nz+1)/(2*Lz))**2)
+        #create empty lists to populate
+        mode = []
+        f = []
+        #iterate through the permutations selected for each mode possibility nx,ny,nz
+        for nx in range(0,perm):
+            for ny in range(0,perm):
+                for nz in range(0,perm):
+                    #for only values within the chosen bandwidth fmin<= f <=fmax
+                    temp = fN(nx,ny,nz)
+                    if temp >=fmin:
+                        if temp <= fmax:
+                            f.append(fN(nx,ny,nz))
+                            mode.append([nx,ny,nz])
+                    #while fmin <= fN(nx,ny,nz) <= fmax: 
+                        #f.append(fN(nx,ny,nz))
+                        #mode.append([nx,ny,nz])
+        f = np.array(f)
+        mode = np.array(mode)
+        idxs = np.argsort(f) #order all the frequencies & associated modes in numerical order of freq.
+        f = f[idxs]
+        mode = mode[idxs]
+        print(f'{len(f)} frequencies recorded in range {fmin}<=f<={fmax}')
+    
+    if walls == 'lossy':
+        print('Solving for natural frequencies assuming perfectly lossy walls')
+    
+    if walls == 'multi':
+        print('Solving for natural frequencies assuming perfectly multiple lossy walls')
+        
+    """
+    #Eigen-Function for rectangular tank assuming rigid walls and pressure release water-air interface
+    Psi = lambda nx,ny,nz :np.cos(nx*np.pi*x/Lx) * np.cos(ny*np.pi*y/Ly) * np.cos((2*nz-1)*np.pi*z/(2*Lz))
+    x = np.linspace(0,Lx)
+    y = np.linspace(0,Ly)
+    z = np.linspace(0,Lz)
+    psi = []
+    print('')
+    print('calculating EigenFunctions')
+    for i in range(len(mode)):
+            psi.append(Psi(mode[i,0],mode[i,1],mode[i,2]))
+    psi = np.array(psi)
+    
+    if plot == True:
+        print(f'plotting first {num} EigenFunctions')
+        import matplotlib.pyplot as plt
+        #number of modes we are interested in contour plotting
+        start = 0   #zeroeth mode 0, 0, 0 is weird?. 
+        #modes and frequencies of interest
+        modeint = mode[start:num+start]
+        fint = f[start:num+start] 
+        
+        #plot over x-y plane w/ z = 0
+        #create spatial arrays for the 3-dimensions of the tank
+        x = np.linspace(0,Lx)
+        y = np.linspace(0,Ly)
+        z = 0
+        x,y = np.meshgrid(x,y)
+        for i in range(len(modeint)):
+            psi1 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
+            #check to see if mode actually present in this plane, if not, do not plot
+            check =np.ones((len(x),len(y)))
+            if np.any(psi1 != check) == True:
+                fig,ax=plt.subplots(1,1)
+                if pstyle == 'line':
+                    cb = ax.contour(x,y,psi1,colors='black',linestyles='dashed')
+                    ax.clabel(cb,inline=True,fontsize=15)
+                else: 
+                    cb = ax.contourf(x,y,psi1)
+                    fig.colorbar(cb)
+                ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where Z={z}m')
+                ax.set_xlabel('X (m)')
+                ax.set_ylabel('Y (m)')
+                plt.show()
+            else: 
+                print('undesired mode not plotted in x-y')
+        
+        #plot over x-z plane w/ y = 0
+        #create spatial arrays for the 3-dimensions of the tank
+        x = np.linspace(0,Lx)
+        z = np.linspace(0,Lz)
+        y = 0
+        x,z = np.meshgrid(x,z)
+        for i in range(len(modeint)):
+            #iterate through calculating each eigenfunction
+            psi2 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
+            #check to see if mode actually present in this plane, if not, do not plot
+            check =np.ones((len(x),len(z)))
+            if np.any(psi2 != check) == True:
+                fig,ax=plt.subplots(1,1)
+                if pstyle == 'line':
+                    cb = ax.contour(x,z,psi2,colors='black',linestyles='dashed')
+                    ax.clabel(cb,inline=True,fontsize=15)
+                else:
+                    cb = ax.contourf(x,z,psi2)
+                    fig.colorbar(cb)
+                ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where Y={y}m')
+                ax.set_xlabel('X (m)')
+                ax.set_ylabel('Z (m)')
+                plt.show()
+            else: 
+                print('undesired mode not plotted in x-z')        
+        
+        #plot over y-z plane w/ x = 0
+        #create spatial arrays for the 3-dimensions of the tank
+        y = np.linspace(0,Ly)
+        z = np.linspace(0,Lz)
+        x = 0
+        y,z = np.meshgrid(y,z)
+        for i in range(len(modeint)):
+            #iterate through calculating each eigenfunction
+            psi3 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
+            #check to see if mode actually present in this plane, if not, do not plot
+            check =np.ones((len(y),len(z)))
+            if np.any(psi3 != check) == True:
+                fig,ax=plt.subplots(1,1)
+                if pstyle == 'line':
+                    cb = ax.contour(y,z,psi3,colors='black',linestyles='dashed')
+                    ax.clabel(cb,inline=True,fontsize=15)
+                else:    
+                    cb = ax.contourf(y,z,psi3)
+                    fig.colorbar(cb)
+                ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where X={x}m')
+                ax.set_xlabel('Y (m)')
+                ax.set_ylabel('Z (m)')
+                plt.show()
+            else: 
+                print('undesired mode not plotted in y-z')
+    """
+    return f, mode#, Psi 
+    
+    
+    
+    
+    
 
 
 ########################
 # How does TL affect the T60 to adjust for underwater or if we do a T10
 # Water attenuation?
 ########################
-
-
-
-
-
-
