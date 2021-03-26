@@ -5,35 +5,16 @@ Created on Fri Jul 17 14:33:19 2020
 @author: cvongsaw
 """
 
-"""
-#####################################################
-#this is test information that can be removed later.# 
-import numpy as np                                  #
-fs = 1e6                                            #
-A = (0.5,3,0.15)                                    #
-R = (0.5,1,0.15)                                    #
-t = np.arange(0,1,1/fs)                             #
-rec = np.zeros(len(t))                              #
-gen = np.zeros(len(t))                              #
-rec[50:59]=1    #delayed impulse mimic received     #
-gen[0:9]=1      #generated impulse                  #
-#####################################################
-"""
-
-def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,pressure = True):
+def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,bandpass=True,gate=True,wiener=False):
     """
     Parameters
     ----------
     cal:    ndarray of float;
-            time (unitflag = 0) or frequency (unitflag = 1) domain of the 
-            received signal in pressure (if pressure = True) or Voltage (if 
-            pressure = False). 
+            Received calibration signal. 
     gen:    ndarray of float;
-            time (unitflag = 0) or frequency (unitflag = 1) domain of the 
-            generated signal in pressure (if pressure = True) or Voltage (if 
-            pressure = False). 
+            Pure generated signal. 
     fs:     float; 
-            Sampling frequency
+            Sampling frequency (Hz)
     AEgir_Pose: tuple; 
                 AEgir TCP position (x,y,z) in the 'tank' frame 
     Ran_pose:   tuple;
@@ -48,11 +29,24 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
         temperature in Celcius where -2<= T <=24.5 
     S   : float, optional;
         salinity where 0.030<= S <=0.042 grams salt per kg H20            
-    pressure:   Boolean {True or False}; optional;
-                Default (True) for providing a Pressure input and not a Voltage. 
-                (False) for a Voltage input which does not take into account 
-                the sensitivity of the transducers or measurement chain. 
-                    
+    bandpass:   Boolean {True or False}; optional;
+                Default (True) for providing a bandpass filter for part of the 
+                deconvolution(Auto-Convolution of gen(t)).(False) for not 
+                performing a bandpass filter and taking all the information.
+    gate:       Boolean {True or False}; optional;
+                Default (True) for time-gating the deconvolved IR h(t) based on 
+                ray theory geometries via TimeGate_UnderwaterTank. The timegated and 
+                non-timegated values are compared for IR and FRF if True. 
+                If (False) then no timegating occurs.
+    wiener:     Boolean {True or False}; optional;
+                Default (False) for using direct deconvolution instead of Wiener
+                deconvolution. Wiener deconvolution helps prevents the potential
+                of dividing by zero allowing for a more robust deconvolution
+                while maintaining any system response desired for accounting. 
+                If (True), then Wiener deconvolution is performed. If bandpass
+                is True, wiener is forced to be true in order to not divide by 
+                zeros in the deconvolution
+        
     Returns
     -------
     ht:     ndarray of float;
@@ -60,12 +54,12 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
             effects of the water and tank environment through timegating only 
             direct signal with small propagation assumption. 
     t:      ndarray of float;
-            Time array for the IR h(t)
+            Time array for the IR h(t) reported in (ms)
     Hf:     ndarray of complex; 
             Complex two-sided Frequency Response to account for all transducer,
             amplifier, etc. in the measurement chain.     
-    f:  ndarray of float
-        frequency array
+    f:      ndarray of float
+            Two-sided frequency array in (Hz)
     
     Notes
     -----
@@ -85,48 +79,18 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
     and deconvolving in order to obtain the pure delay of h(t).
     Cite: "Characterization of underwater acoustic sources recorded in reverberant
     environments with application to scuba signatures" Gemba (2014) Dissertation
-        
-    last modified 02/10/2021
+    
+    A bandpass filter is applied to the Auto-Convolution of gen(t) in order to
+    remove high frequency content brought about as an artifact of the convolution
+    
+    last modified 03/26/2021
     """
-    #TimeGate_UnderwaterTank.py timegateTank
-    from TimeGate_UnderwaterTank import timegateTank
     import numpy as np
     import matplotlib.pyplot as plt
     import scipy.signal as sci 
-    print('')
-    print('printing calibration position details...')
-    print('')
-    tgate,tside,dis,c = timegateTank(AEgirPose,RanPose,D,T,S,Coordinate='tank') 
-    
-    #convert leading zeros time length to samples of leading zeros
-    #take only majority % of the zeros allowing to view just before the signal 
-    #rises with % assumed roughly by fs values for proper allowance of signal.
-    #but realistically these values are mostly arbitrarily trying to approach
-    #very close to the initial signal considering fs.
-    if fs <= 5e5:
-        percent = 0.99999
-    """
-    #?????????????This should be based off of the frequency band not fs????????
-    """
-    if fs > 5e5 and fs <= 1e6:
-        percent = 0.999
-    if fs > 1e6:
-        percent = 0.99
-    
-    """
-    Create a true false boolian logic to true, do the time gate, or false, dont
-    """
-    tstart = tstart *percent 
-    start = int(tstart*fs)
-    fin = int((tgate+tstart)*fs)
-    
-    """
-    plt.figure()
-    plt.plot(gen)
-    plt.plot(cal-np.mean(cal))
-    plt.title(f'gen and cal')
-    plt.legend(['gen','cal'])
-    """
+    from TimeGate_UnderwaterTank import timegateTank
+    import pdb
+    plot = False
     
     #Gemba (2014) dissertation eq 3.3.3, 3.3.5 and 3.3.6
     #Get the temporal inverse of the generated signal so the xcorr is 
@@ -138,11 +102,10 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
     gen_flip = np.flip(gen)
     #xcorr of the recorded and temporal inverse generated (xcorr takes conj of
     #the gen_flip as part of its process) acorr is autocorrelation of the gen
-    
     acorr = sci.correlate(gen,gen_flip,mode='full',method='auto')
     xcorr = sci.correlate(cal,gen_flip,mode='full',method='auto')
-    #acorr = acorr - np.mean(acorr)
-    #xcorr = xcorr - np.mean(xcorr)
+    #acorr = acorr - np.mean(acorr) #option to zero-mean removing DC offset
+    #xcorr = xcorr - np.mean(xcorr) #option to zero-mean removing DC offset
     t = np.linspace(0,len(acorr)/fs,len(acorr))
     #convert time in sec to time in ms
     t = t*1000
@@ -154,115 +117,199 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
     Xcorr = np.fft.fft(xcorr)
     Acorr = np.fft.fft(acorr)
     f = np.fft.fftfreq(len(xcorr),d=1/fs)
-    #single sided
+    #obtain single sided values
     Xcorr = 2*Xcorr[0:(int(len(Xcorr)/2))]
+    Xd = Xcorr #renaming to call for the deconvolution later 
     Acorr = 2*Acorr[0:(int(len(Acorr)/2))]
-    fss = f[0:int(len(f)/2)]/1000   #convert from Hz to kHz
+    fss = f[0:int(len(f)/2)]/1000     #convert from Hz to kHz 
     
-    plt.figure()
-    plt.plot(t,xcorr)
-    plt.plot(t,acorr)
-    plt.legend([r'r(t)$ \ast \overline{g(-t)}$',r'g(t)$ \ast \overline{g(-t)}$'])
-    plt.xlabel('Time (ms)')
-    plt.title('Components of Cal & Gen Convolution')
+    if plot == True:
+        plt.figure()
+        plt.plot(t,xcorr)
+        plt.plot(t,acorr)
+        plt.legend([r'r(t)$ \ast \overline{g(-t)}$',r'g(t)$ \ast \overline{g(-t)}$'])
+        plt.xlabel('Time (ms)')
+        plt.title('Components of Cal & Gen Convolution')
  
-    
     #################################################################
     #********????????????????????? TO DO ***********************
+    """This is not perfect and does not do the best just yet at at determining band"""
+    """This could just be another input of the chirp bandwidth to be more precise"""
     #determine Frequency band of gen from where Acorr approaches zero
-    #Truncate Xcorr and Acorr for that value
-    #can also do this for low frequencies to apply bandpass filter
-    """
-    Create a true false boolian logic to true, do the bandpass, or false, dont
-    """
-    cond = 0.0001*np.abs(np.max(Xcorr))
-    band = np.argwhere(np.abs(Xcorr)>cond)
-    hpass = min(band) #high pass frequency array index
-    lpass = max(band) #low pass frequency array index
-    fhigh = f[hpass] #high pass frequency
-    flow = f[lpass] #low pass frequency
+    #Truncate Acorr for that bandwidth and pad with zeros to retain size.
+    #The bandpass filter is not applied to Xcorr because it contains system 
+    #noise that we wish to account for (though some of the high freq noise is
+    #definitely an artifact of the convolution).  
+    if bandpass == True:
+        """ attempted to determine bandpass from Gen Signal to be more precise, but its the wrong size
+        Gen = np.fft.fft(gen)
+        Gss = Gen[0:int(len(Gen)/2)]/1000 
+        cond = 0.01*(np.max(Gss))
+        band = np.argwhere((Gss)>cond)
+        hpass = min(band)   #high pass frequency array index
+        lpass = max(band)   #low pass frequency array index
+        fhigh = f[hpass]    #high pass frequency
+        flow = f[lpass]     #low pass frequency
+        print(f'Frequency Band = {fhigh} < f < {flow}')
+        """
+        #set condition where energy is high for frequencies of interest
+        #coefficient is arbitrarily chosen to obtain close enough band
+        #this can be improved by having the band input and found
+        cond = 0.17*(np.max(Acorr)) #set condition where energy is high for frequencies of interest
+        band = np.argwhere((Acorr)>cond) #determine idx values where the condition is true
+        hpass = min(band)   #high pass frequency array index
+        lpass = max(band)   #low pass frequency array index
+        fhigh = f[hpass]    #high pass frequency
+        flow = f[lpass]     #low pass frequency
+        print(f'Frequency Band = {fhigh} < f < {flow}')
+        
+        #Bandpass filter only Acorr since both Gen and Genflip should not have freq. content outside bandpass filter 
+        #pad Acorr with zeros to maintain original length in relation to Xcorr
+        Acorr = Acorr[int(hpass):int(lpass)] #bandpass reduces size of array
+        pads = hpass #start pad index up to start of freq band
+        padf = len(Xcorr)-lpass #finish pad index after end of band
+        Acorr = np.pad(Acorr,(int(pads),int(padf)),'constant',constant_values=(0)) #regain original size with zero padding
+        Ad = Acorr #renaming to call for the deconvolution later 
+        
+        #Since the bandpass puts a lot of zeros to be divided in the deconvolution, 
+        #we will set wiener = True such that we do not divide by zero****
+        wiener = True
+        
+        #for plotting each component to check if it is functioning well. 
+        Acorr_dB = np.abs(10*np.log10(Acorr[int(hpass):int(lpass)])) #bandpass & convert to dB for plotting visualization
+        Acorr_dB = np.pad(Acorr_dB,(int(pads),int(padf)),'constant',constant_values=(0)) #pad to retain length
+        Xcorr_dB = np.abs(10*np.log10(Xcorr[:])) #convert to dB for plotting visualization
+        
+        if plot == True:
+            plt.figure()
+            plt.plot(fss,Xcorr_dB)
+            plt.plot(fss,Acorr_dB)
+            plt.legend([r'fft(r(t)$ \ast \overline{g(-t)}$)',r'fft(g(t)$ \ast \overline{g(-t)}$)'])
+            plt.xlabel('Frequency (kHz)')
+            plt.ylabel(r'dB re 1$ \mu$Pa')
+            plt.title(f'Bandpass filtered Response for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
+            
+    else:
+        Xd = Xcorr #renaming to call for the deconvolution later 
+        Ad = Acorr #renaming to call for the deconvolution later 
+        Acorr_dB = np.abs(10*np.log10(Acorr)) #convert to dB for plotting visualization
+        Xcorr_dB = np.abs(10*np.log10(Xcorr)) #convert to dB for plotting visualization
+        
+        if plot == True:
+            plt.figure()
+            plt.plot(fss,Xcorr_dB)
+            plt.plot(fss,Acorr_dB)
+            plt.legend([r'fft(r(t)$ \ast \overline{g(-t)}$)',r'fft(g(t)$ \ast \overline{g(-t)}$)'])
+            plt.xlabel('Frequency (kHz)')
+            plt.ylabel(r'dB re 1$ \mu$Pa')
+            plt.title(f'Response')
+        
+    if wiener == True:
+        print('performing deconvolution via Wiener deconvolution preventing dividing by zero')
+        #Wiener Deconvolution (if there are noise stuggle in the deconvolution this adapts for 
+        #high freq noise). However this is limited to only linear time-invariant signals.
+        lamb = 0.005 #scaling parameter arbitrarily chosen
+        #expectation or noise or SNR (Dr. Anderson uses mean instead of max and lamb = 0.9)
+        #https://drive.google.com/file/d/12mprsdEDttCcWy7GOT1ySOfyf58jZCWL/view for paper by Dr. Anderson
+        #using this in the deconvolution and discussing optimizing lamb
+        #sigma can also be known as the SNR
+        sigma = lamb*np.mean(np.abs(Ad)) 
+        WDeconv = np.conj(Ad)*Xd/(np.abs(Ad)**2+sigma**2)
+        Deconv = WDeconv
+    else: 
+        print('Performing deconvolution via direct division in frequency domain')
+        Deconv = Xd/Ad #standard deconvolution is division in freq domain
     
-    print(f'Frequency Band = {fhigh} < f < {flow}')
+    ht = np.fft.ifft(Deconv)                #IR from deconvolution
+    t = np.linspace(0,len(ht)/fs,len(ht))   #time array for ht
+    t = t*1000                              #convert time in sec to time in ms
     
-    #deconvolution interval
-    Xd = Xcorr[int(hpass):int(lpass)]
-    Ad = Acorr[int(hpass):int(lpass)]
-    Deconv = Xd/Ad #standard deconvolution is division in freq domain
+    #calculate the non-timegated FRF of the Cal measurement.
+    #this is done for comparison and analysis. 
+    Hf = np.fft.fft(ht)                 #convert from time domain to frequency via FFT (double-sided)
+    f = np.fft.fftfreq(len(ht),d=1/fs)  #obtain the double-sided associated frequency array
+    Hss = 2*Hf[0:(int(len(Hf)/2))]      #obtained the single sided FRF from the double sided
+    fss = f[0:int(len(f)/2)]/1000       #convert from Hz to kHz
+    Hss_dB = 10*np.log10(Hss)           #convert to dB for plotting visualization
     
-    
-    Acorr_dB = np.abs(10*np.log10(Acorr[int(hpass):int(lpass)])) #convert to dB for plotting visualization
-    Xcorr_dB = np.abs(10*np.log10(Xcorr[int(hpass):int(lpass)])) #convert to dB for plotting visualization
-    
-    plt.figure()
-    plt.plot(fss[int(hpass):int(lpass)],Xcorr_dB)
-    plt.plot(fss[int(hpass):int(lpass)],Acorr_dB)
-    plt.legend([r'fft(r(t)$ \ast \overline{g(-t)}$)',r'fft(g(t)$ \ast \overline{g(-t)}$)'])
-    plt.xlabel('Frequency (kHz)')
-    plt.ylabel(r'dB re 1$ \mu$Pa')
-    plt.title(f'Bandpass filtered Response for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
-    
-    #Wiener Deconvolution (if there are noise stuggle in the deconvolution this adapts for high freq noise)
-    lamb = 0.005 #scaling parameter
-    #expectation or noise or SNR (Dr. Anderson uses mean instead of max and lamb = 0.9)
-    #https://drive.google.com/file/d/12mprsdEDttCcWy7GOT1ySOfyf58jZCWL/view for paper by Dr. Anderson
-    #using this in the deconvolution and discussing optimizing lamb
-    sigma = lamb*np.max(np.abs(Ad)) 
-    WDeconv = np.conj(Ad)*Xd/(np.abs(Ad)**2+sigma**2)
-    
-    ht = np.fft.ifft(Deconv)
-    t = np.linspace(0,len(ht)/fs,len(ht))
-    #convert time in sec to time in ms
-    t = t*1000
-    
-    #################################################################
-    #********????????????????????? TO DO ***********************
+    ###########################################################################
     #TIMEGATE ht to obtain impulse of only the direct sound before obtaining Hf
     #it is then important to zero pad the time gated signal so it is the same 
     #length as it started as again. If this is not done, then Hf has only a 
     #few frequency bins which is not enough information. 
-    start = 0
-    fin = int(tgate*fs*percent)
-    ht1 = ht[start:fin]
-    t1 = t
-    #print('fin=',fin)
-    #pad ht with zeros to maintain detail for Hf
-    pad0 = start
-    pad1 = len(ht)-len(ht1)-start
-    ht1 = np.pad(ht1,(pad0,pad1),'constant',constant_values=(0))
+    print('')
+    print('printing calibration position details...')
+    print('')
+    #Obtain earliest reflection times according to ray theory geometry of the tank
+    tgate,tside,dis,c = timegateTank(AEgirPose,RanPose,D,T,S,Coordinate='tank') 
     
-    #print('ht1=',len(ht))
-    #print('t1=',len(t))
-    #print('ht1=',len(ht1))
-    #print('t1=',len(t1))
+    if gate == True:
+        #take only majority % of the zeros allowing to view just before the signal 
+        #rises with % assumed roughly by fs values for an allowance of the signal.
+        #but realistically these values are mostly arbitrarily trying to approach
+        #very close to the initial signal considering fs.
+        #This also plots the timegated and non timegated IR & FRF for comparison
+        """#?????????This should be based off of the frequency band not fs!!!!"""
+        """1T of fmax(most dominant freq) buffer before 1st reflection"""
+        #min period is determined from max frequency or frequency of interest
+        Tmin = 1/fhigh 
+        """temporary solution since the below adjustment is not working well and
+        definitely not determined generically for any measurement. 
+        Might be good to look into constant fraction descrimination to find peak
+        around the tgate time"""
+        if fs <=1e6:
+            Nmin = 10 #fs = 1M
+        else:
+            Nmin = 1e5 #fs = 10M
+        #Nmin = Tmin*fs #number of samples to shift by based on min period
+        #shift gate before by Nmin samples
+        fin = int(tgate*fs-Nmin)
+        start = 0 #start the time gating allowing everything from the beginning of ht
+        #convert time length to samples to determine the finish cutoff of ht
+        #fin = int(tgate*fs*percent)
+        #cut off the IR before the first reflection being index "fin"
+        ht1 = ht[start:fin]
+        #pad ht with zeros to maintain original length (maintains detail for Hf)
+        pad0 = start
+        pad1 = len(ht)-len(ht1)-start
+        ht1 = np.pad(ht1,(pad0,pad1),'constant',constant_values=(0))
+        
+        if plot == True:
+            #plot timegated & non-timegated IR for reference and comparison. 
+            plt.figure()
+            plt.plot(t,ht,linewidth = 4)    #plot the non-timegated IR
+            plt.plot(t,ht1,linewidth = 4)   #plot the timegated IR
+            if bandpass == True:
+                plt.title(f'System IR for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
+            else:
+                plt.title(f'System IR')
+            plt.xlabel('Time (ms)')
+            plt.legend(['non gated','gated'])
     
     
-    plt.figure()
-    plt.plot(t,ht,linewidth = 4)
-    plt.plot(t,ht1,linewidth = 4)
-    plt.title(f'System IR for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
-    plt.xlabel('Time (ms)')
-    plt.legend(['non gated','gated'])
-    
-    Hf = np.fft.fft(ht)
-    f = np.fft.fftfreq(len(ht),d=1/fs)    
-    Hss = 2*Hf[0:(int(len(Hf)/2))]
-    fss = f[0:int(len(f)/2)]/1000 #conver from Hz to kHz
-    Hss_dB = 10*np.log10(Hss) #convert to dB for plotting visualization
-    
-    Hf1 = np.fft.fft(ht1)
-    f1 = np.fft.fftfreq(len(ht1),d=1/fs)    
-    Hss1 = 2*Hf1[0:(int(len(Hf1)/2))]
-    fss1 = f1[0:int(len(f1)/2)]/1000 #conver from Hz to kHz
-    Hss1_dB = 10*np.log10(Hss1) #convert to dB for plotting visualization
-    
-    plt.figure()
-    plt.plot(fss,np.abs(Hss_dB),linewidth = 4)
-    plt.plot(fss1,np.abs(Hss1_dB),linewidth = 4)
-    plt.title(f'System FRF for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
-    plt.xlabel('Frequency (kHz)')
-    plt.ylabel(r'dB re 1$ \mu$Pa')
-    plt.legend(['non gated','gated'])
-    
+        #calculate the FRF from the time-gated IR and obtain the associated freq array
+        Hf1 = np.fft.fft(ht1)               #FRF of the time-gated system IR
+        f1 = np.fft.fftfreq(len(ht1),d=1/fs)#associated frequency array    
+        Hss1 = 2*Hf1[0:(int(len(Hf1)/2))]   #convert to single-sided FRF
+        fss1 = f1[0:int(len(f1)/2)]/1000    #convert to single-sided from Hz to kHz
+        Hss1_dB = 10*np.log10(Hss1)         #convert to dB for plotting visualization
+        
+        if plot == True:
+            plt.figure()
+            plt.plot(fss,np.abs(Hss_dB),linewidth = 4)
+            plt.plot(fss1,np.abs(Hss1_dB),linewidth = 4)
+            if bandpass == True:
+                plt.title(f'System FRF for {int(fhigh/1e3)}<f<{int(flow/1e3)} kHz Chirp')
+            else:
+                plt.title(f'System FRF')
+            plt.xlabel('Frequency (kHz)')
+            plt.ylabel(r'dB re 1$ \mu$Pa')
+            plt.legend(['non gated','gated'])
+        
+        #reset variables to be ready for output. 
+        ht = ht1    #report the time-gated IR
+        Hf = Hf1    #report the double-sided time-gated FRF
+        f = f1      #report the double-sided associated freq array
     
     
     """
@@ -301,21 +348,3 @@ def SystemResponse(cal,gen,fs,AEgirPose,RanPose,tstart=0.5,D=0.2,T=16.0,S=0.03,p
     """
     
     return ht,t,Hf,f
-
-"""
-import matplotlib.pyplot as plt
-f = [4.0,5.0,6.3,8.1,10.0,12.5,16.0,20.0,25.0,28.0,31.5,35.5,40.1,45.1,50.0,56.1,63.0,71.0,80.0,90.0,100.0,112.0,125.1,140.0,160.0,180.0,200.1]
-Sen = [-210.0,-211.3,-211.0,-211.3,-211.3,-212.1,-212.4,-212.4,-212.0,-212.1,-212.6,-212.8,-212.3,-212.8,-213.2,-212.9,-213.4,-213.3,-213.0,-212.8,-212.1,-210.6,-211.2,-213.3,-217.3,-222.0,-220.8]
-plt.figure()
-plt.semilogx(f,Sen)
-plt.title('BK 8103 Sensitivity')
-plt.xlabel('Frequency (kHz)')
-plt.ylabel(r'Sensitivity (dB re 1 V/$\mu$Pa)')
-plt.xlim(4,201)
-plt.minorticks_on()
-plt.grid(True,which="minor",ls="-",lw=1,c='grey')
-plt.grid(True,which="major",ls="-",lw=1,c='black')
-plt.tick_params(which='both',width=1,color='grey')
-plt.tick_params(which='major',length=7)
-plt.tick_params(which='minor',length=5)
-"""

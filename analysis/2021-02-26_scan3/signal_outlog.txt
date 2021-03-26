@@ -1,0 +1,26 @@
+Log file for signal_out.bin (Single-Precision)
+
+02/26/21
+14:23:30
+Temp: 23.95 ºC
+Input Device M/N: USB-TC01 S/N: 1F2CC9E
+
+
+Temperature: 1.43E-2 mA and Pressure: 9.95E-3 mA
+
+Card: 16
+Channel: 0
+
+Signal Configuration: 
+
+
+Forward Step Configuration:
+
+
+TR IR Calculation:
+
+
+Focus Step Configuration:
+
+
+Comments:
