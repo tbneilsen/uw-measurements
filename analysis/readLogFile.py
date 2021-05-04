@@ -55,16 +55,20 @@ def readLogFile(filename,location):
         Y-position of receiver (m)
     zRec : Float
         Z-position of receiver (m)
-
+        
+    Notes
+    -------
+    Created by Corey Dobbs
+    
+    Last updated 4/8/2021
     """
     
     #Call desired directory
-    import sys
-    sys.path.insert(1,location)
-    
+    #import sys
+    #sys.path.insert(1,location)
     
     mylines = []
-    with open(location + filename,"rt") as myfile: 
+    with open(location+filename,"rt") as myfile: 
         for myline in myfile:
             mylines.append(myline.rstrip('\n'))
 
