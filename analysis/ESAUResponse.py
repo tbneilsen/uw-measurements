@@ -53,7 +53,7 @@ def IR(rec,gen,fs,bandpass=True,wiener=False,domain='t'):
     Cite: "Characterization of underwater acoustic sources recorded in reverberant
     environments with application to scuba signatures" Gemba (2014) Dissertation
         
-    last modified 03/29/2021
+    last modified 5/4/2021
     """
     import numpy as np
     import scipy.signal as sci 
@@ -66,17 +66,13 @@ def IR(rec,gen,fs,bandpass=True,wiener=False,domain='t'):
         #basically a convolution in the time domain. The temporal inversion also 
         #makes sure there is a phase inversion and thus the xcorr results in a 
         #pure delay of h(t)
+        #*************************************************************************
         #rec(t)*conj(gen(-t)) = h(t)*gen(t)*conj(gen(-t)) eq 3.3.5 solve for h(t)
-        #this method of xcorr is equivalent to a Convolution since a convolution 
-        #takes the temperal inverse of the array (inverse filter).
-        gen_flip = np.flip(gen)
+        gen_flip = np.conj(np.flip(gen))
         #xcorr of the recorded and temporal inverse generated (xcorr takes conj of
         #the gen_flip as part of its process) acorr is autocorrelation of the gen
-        #such that xcorr = rec(t)*conj(gen(-t)) and acorr = gen(t)*conj(gen(-t)) 
-        #from above equation where *conj(gen(-t)) applies inverse filtering.
         acorr = sci.correlate(gen,gen_flip,mode='full',method='auto')
         xcorr = sci.correlate(rec,gen_flip,mode='full',method='auto')
-        f = np.fft.fftfreq(len(xcorr),d=1/fs)
         
         #It is necessary to take these two parts into the frequency domain in order
         #to divide them out to solve for h(t). Division in the frequency domain is a
@@ -85,7 +81,8 @@ def IR(rec,gen,fs,bandpass=True,wiener=False,domain='t'):
         """#******edit normalization of FFT???!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
         Xcorr = np.fft.fft(xcorr) #double-sided frequency response
         Acorr = np.fft.fft(acorr) #double-sided frequency response
-    
+        f = np.fft.fftfreq(len(xcorr),d=1/fs)
+        
     if domain == 'frequency' or 'freq' or 'f':
         """ COMPUT ALL IN FREQ DOMAIN instead of above"""
         """ Initial investigation looks like the two methods give same results"""
@@ -96,6 +93,7 @@ def IR(rec,gen,fs,bandpass=True,wiener=False,domain='t'):
     
     #Single Sided 
     Xcorr = 2*Xcorr[0:(int(len(Xcorr)/2))] 
+    Xd = Xcorr #renaming to call for the deconvolution later 
     Acorr = 2*Acorr[0:(int(len(Acorr)/2))]
     
     if bandpass ==True:
@@ -106,19 +104,26 @@ def IR(rec,gen,fs,bandpass=True,wiener=False,domain='t'):
         #**HOWEVER**, it may also remove important data from the system response. 
         """# TO DO TO DO TO DO TO DO TO DO TO DO  not perfect for sure but decent"""
         #Determine the condition in which the signal strength is small compared to max
-        cond = 0.17*np.abs(np.max(Xcorr))     #arbitrary coeff.
-        band = np.argwhere(np.abs(Xcorr)>cond)  #index values meeting above condition
+        cond = 0.17*np.abs(np.max(Acorr))     #arbitrary coeff.
+        band = np.argwhere(np.abs(Acorr)>cond)  #index values meeting above condition
         hpass = min(band)                       #high pass index of response
         lpass = max(band)                       #low pass index of response
         fhigh = f[hpass]    #high pass frequency
         flow = f[lpass]     #low pass frequency
         print(f'Frequency Band = {fhigh} < f < {flow}')
-        #deconvolution over bandpass interval
-        Xd = Xcorr[int(hpass):int(lpass)]
-        Ad = Acorr[int(hpass):int(lpass)]
+        
+        #Bandpass filter only Acorr since both Gen and Genflip should not have freq. content outside bandpass filter 
+        #pad Acorr with zeros to maintain original length in relation to Xcorr
+        Acorr = Acorr[int(hpass):int(lpass)] #bandpass reduces size of array
+        pads = hpass #start pad index up to start of freq band
+        padf = len(Xcorr)-lpass #finish pad index after end of band
+        Acorr = np.pad(Acorr,(int(pads),int(padf)),'constant',constant_values=(0)) #regain original size with zero padding
+        Ad = Acorr #renaming to call for the deconvolution later 
+        
         #Since the bandpass puts a lot of zeros to be divided in the deconvolution, 
         #we will set wiener = True such that we do not divide by zero****
         wiener = True
+        
     else: 
         #When not bandpassing the signal (which takes out potential effects from 
         #the system response) repass Xd and Ad as the original arrays
@@ -196,7 +201,7 @@ def SysResponse(cal,gen,fs,AEgirPose,RanPose,tgate=0,bandpass=True,wiener=False)
                 effects of the water and tank environment through timegating only 
                 direct signal with small propagation assumption. 
     t:          ndarray of float;
-                Time array for the IR h(t)
+                Time array for the IR h(t) in (ms)
     Hf:         ndarray of complex; 
                 Complex two-sided Frequency Response to account for all transducer,
                 amplifier, etc. in the measurement chain.     
@@ -222,7 +227,7 @@ def SysResponse(cal,gen,fs,AEgirPose,RanPose,tgate=0,bandpass=True,wiener=False)
     Cite: "Characterization of underwater acoustic sources recorded in reverberant
     environments with application to scuba signatures" Gemba (2014) Dissertation
         
-    last modified 03/29/2021
+    last modified 5/4/2021
     """
     import numpy as np
     from ESAUResponse import IR
@@ -233,58 +238,43 @@ def SysResponse(cal,gen,fs,AEgirPose,RanPose,tgate=0,bandpass=True,wiener=False)
     
     if tgate !=0:
         print('Timegating the IR of the signal...')
-        #TIMEGATE ht to obtain impulse of only the direct sound before obtaining Hf
-        #it is then important to zero pad the time gated signal so it is the same 
-        #length as it started as again. If this is not done, then Hf has only a 
-        #few frequency bins which is not enough information. 
-        
-        #Obtain earliest reflection times according to ray theory geometry of the tank
-        #prior to using this code by using timegateTank() from TimeGate_UnderwaterTank
-        #as follows:
-        #tgate,tside,dis,c = timegateTank(AEgirPose,RanPose,D,T,S,Coordinate='tank') 
-        
         #take only majority % of the zeros allowing to view just before the signal 
         #rises with % assumed roughly by fs values for an allowance of the signal.
         #but realistically these values are mostly arbitrarily trying to approach
         #very close to the initial signal considering fs.
-        #This also plots the timegated and non timegated IR & FRF for comparison
-        """#?????????This should be based off of the frequency band not fs!!!!!!
-        if fs <= 5e5:
-            percent = 0.99999
-        if fs > 5e5 and fs <= 1e6:
-            percent = 0.999
-        if fs > 1e6:
-            percent = 0.99"""
+        """#?????????This should be based off of the frequency band not fs!!!!"""
         
-        """temporary solution since the below adjustment is not working well and
-        definitely not determined generically for any measurement. 
+        """
         Might be good to look into constant fraction descrimination to find peak
         around the tgate time"""
-        if fs <=1e6:
-            Nmin = 10 #fs = 1M  (this worked for one measurement with this fs)
-            """might want to turn this into an estimated input value to play with.""" 
-        else:
-            Nmin = 1e5 #fs = 10M (this worked for one measurement with this fs)
-        #Nmin = Tmin*fs #number of samples to shift by based on min period
-        #shift gate before by Nmin samples
         
+        import TimeGate_UnderwaterTank as tg
+        ht1 = tg.gatefunc(ht,fs,tgate,tb4=0.1)
+        
+        """
+        tb4gate = 0.1 #ms before first reflection tgate
+        Nb4gate = tb4gate/1000 *fs #convert to samples before gating
+        
+        fin = int(tgate*fs-Nb4gate)
         start = 0 #start the time gating allowing everything from the beginning of ht
         #convert time length to samples to determine the finish cutoff of ht
-        #fin = int(tgate*fs*percent) #possible other option by percent
-        fin = int(tgate*fs-Nmin)
+        #fin = int(tgate*fs*percent)
         #cut off the IR before the first reflection being index "fin"
-        ht1 = ht[start:fin]
-        #pad ht with zeros to maintain original length (maintains detail for Hf)
-        pad0 = start
-        pad1 = len(ht)-len(ht1)-start
-        ht1 = np.pad(ht1,(pad0,pad1),'constant',constant_values=(0))
-        #reset variable
-        ht = ht1 #report the time-gated IR
+        ht1 = np.zeros(len(ht))
+        ht1[start:fin] = ht[start:fin] #replace up to gate with original
+        damp = int(0.05/1000*fs) #0.05ms of damping converted to samples
+        #apply hanning window to portion of the array following original cutoff
+        #this allows for the signal to more gradually ramp down to zeros. 
+        ht1[fin:fin+damp] = ht[fin:fin+damp]*np.hanning(damp)
+        #repopulate first half of that damping data keeping original array information
+        ht1[fin:int(fin+damp/2)] = ht[fin:int(fin+damp/2)]
+        """
+        
     
     #calculate the FRF from the IR and obtain the associated freq array
     print('calculating the 2-sided Frequency Response...')
     #report the double-sided time-gated FRF
-    Hf = np.fft.fft(ht)               #FRF of the time-gated system IR
+    Hf = np.fft.fft(ht1)               #FRF of the time-gated system IR
     #report the double-sided associated freq array
     f = np.fft.fftfreq(len(ht),d=1/fs)#associated frequency array     
     
@@ -292,6 +282,9 @@ def SysResponse(cal,gen,fs,AEgirPose,RanPose,tgate=0,bandpass=True,wiener=False)
     #as follows below:
         #Hss = 2*Hf[0:(int(len(Hf)/2))]   #convert to single-sided FRF
         #fss = f[0:int(len(f)/2)]/1000    #convert to single-sided from Hz to kHz 
+    
+    #reset variables to be ready for output. 
+    ht = ht1    #report the time-gated IR
     
     return ht,t,Hf,f
 
