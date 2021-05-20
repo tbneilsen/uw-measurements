@@ -2,12 +2,85 @@
 """
 Created on Wed Feb  5 19:50:24 2020
 
-Code developed for basic characterization of the tank environment. Including
-T60 estimation, schroeder frequency estimation, trailing zeros
+Code developed for basic characterization of the tank environment. 
+Including:
+T60 estimation, schroeder frequency estimation, estimated need of trailing zeros,
+propagation absorption coefficient, T60 measured from h(t), absorption coefficient 
+of walls in tank from T60, Tank eigenmodes and Tank eigenfunctions
+
+
+
 
 @author: cvongsaw
 """
+def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
+    """
+    This does not currently function correctly... it'll take some more time
+    
+    Parameters
+    ----------
+    data:       Ndarray;
+                Sampled data that covers some bandwidth.
+    f0:         float;
+                Low-end frequency (Hz) of the desired bandwidth
+    f1:         float;
+                High-end frequency (Hz) of the desired bandwidth
+    fs:         float;
+                Sampling frequency of the data
+    frac:       float, Optional;
+                Bandwidth 'b'. Examples: 1/3-octabe b=3, 1-octave b=1 (Default), 
+                2/3-octave b=3/2.
+    order:      Int, Optional;
+                Order of the filter. Defaults to 5. 
+    Returns
+    -------
+    filt_data:  Ndarray;
+                Array of the bandpass filtered data
+    freq:       Ndarray of float;
+                Array of octave or fractional octave frequencies
+    
 
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Apply a bandpass filter to data in order to obtain an average over an 
+    octave or fractional octave band centered at the middle frequencies output
+    in freqs. 
+    
+    https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
+    
+    https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
+    
+    last modified 5/19/2021      
+    """
+    from scipy.signal import butter, lfilter
+    import numpy as np
+    
+    
+    #Generate Frequency Array
+    """Need to actually do this according to ISO and example from github above
+    This is currently a cheap solution to not get yelled at too much. """
+    fc = np.array([250,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000])
+    #frequency array for low and high bounds of each bandwidth
+    f_low = np.array([224,447,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913])
+    f_high = np.array([282,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913,11220])
+    #index frequencies according to center frequencies that fit within f0,f1 limits. 
+    fl = np.argwhere(fc>f0)
+    fh = np.arhwehre(fc<f1)
+    freq = fc[fl:fh]
+    f_low = f_low[fl:fh]
+    f_high = f_high[fl:fh]
+    
+    #Use a butterworth filter on the data according to the fractional octave bands
+    nyq = 0.5*fs #nyquist frequency
+    low = f_low/nyq #low end of filter
+    high = f_high/nyq #high end of filter
+    #apply butterworth filter to data
+    b,a = butter(order,[low,high],btype='band')
+    filt_data = lfilter(b,a,data)
+     
+    return filt_data, freq
 
 def T60est(d,c = 1478,zw = 1.5e6,zi= 3.26e6):
     """
@@ -220,7 +293,8 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     comes from Ainslie & McColm 1997 - "A simplified formula for viscous and
     chemical absorption in sea water" Published in JASA 103 equation 2 & 3.
     
-    Can apply this in propagation models similar to 
+    Can apply this in propagation models similar to account for thermoviscous
+    molecular losses.
 
     last modified 4/27/2021      
     """
@@ -239,7 +313,7 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
 
 
 
-def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0):
+def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     """
     Calculate the T20, T30, or T60 from Backward Schroeder Integration on the 
     measured impulse response hsys.
@@ -250,6 +324,10 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
                 Measured Impulse Response of the environment. 
     fs:         float;
                 Sampling frequency of the impulse reponse. 
+    t0:         int;
+                start time in seconds
+    t1:         int;
+                finish time in seconds 
     d:          float, Optional;
                 depth of water. Defaults to a common 0.6m of water in the tank
     c:          float, Optional;
@@ -264,32 +342,20 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
     plot:       boolian, Optional;
                 Defaults to False so as to not Plot the 10log(h(t)**2) and the 
                 associated Decay Curve. True would plot the two. 
-    acc:        boolian, Optional;
-                Account for the assumption that the water-air boundary is perfectly
-                reflective. Defaults to False to not make this assumption and give
-                the overall spatially averaged absorption coefficient. If True, 
-                then the spatially averaged absorption coefficient that is returned
-                only accounts for the walls and the floor of the enclosure. 
-    alpha_p:    float or ndarray of float, Optional;
-                Absorption coefficient due to thermoviscous molecular propagation
-                losses. Defaults as 0 such that there is no propagation absorption.
-                Can use alpha_prop(f,T,S,pH,depth) code to feed in an array of 
-                frequency dependent absorption coefficients due to propagation 
-                losses through the water. 
                 
 
     Returns
     -------
-    T60:            float;
-                    Calculated reverberation time (T60) in the tank in seconds.
-                    This is calculated using the Through The System (TTS) 
-                    response to evaluate reverberation only in the tank. 
-                    (i.e. time it takes for the signal in the tank to drop by 
-                    60dB)
-    alpha_S:        float;
-                    Estimated spatially averaged absorption coefficient for the
-                    room based on the measured T60 and the Eyring Equation.  
-    
+    T60:        float;
+                Calculated reverberation time (T60) in the tank in seconds.
+                This is calculated using the Through The System (TTS) 
+                response to evaluate reverberation only in the tank. 
+                (i.e. time it takes for the signal in the tank to drop by 
+                60dB)
+    alpha_S:    float;
+                Estimated spatially averaged absorption coefficient for the
+                room based on the measured T60 and the Eyring Equation.  
+
 
     Notes
     -----
@@ -297,7 +363,13 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
     
     Calculate the measured T60 in the tank. 
     
-    last modified 4/27/2021      
+    Some guidance for this part found here: 
+    https://github.com/python-acoustics/python-acoustics/blob/master/acoustics/room.py
+    the above link provides an alternate method to more generalize this solution 
+    
+    This also follows ISO3382-1:2009(E)
+    
+    last modified 5/18/2021      
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -313,20 +385,23 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
              'lines.linewidth':2}
     pylab.rcParams.update(params)
     
+    ##avoid log(0) to prevent exploding by clipping all zeros to 0.00001% of of the max
+    ## and go just beyond the max value so as to not clip. 
+    floor = np.max(ht)*1e-5 
+    ht1 = np.clip(ht,floor,(np.max(ht)+floor)) #data w/out zeros
+    
+    #Portion of array to actually look at for the T60meas. This is found by
+    #eyeing it (ISO3382-1:2009(E)). Look for just after the 10*np.log10(np.abs(ht)**2) 
+    #is flat in the beginning and just before it is flat in the end (background level).
+    t0 = int(t0*fs) #convert to samples
+    t1 = int(t1*fs) #convert to samples
+    ht1 = ht1[t0:t1] 
+
     #Backward Schroeder Integration
-    #Some guidance for this part found here: 
-    #https://github.com/python-acoustics/python-acoustics/blob/master/acoustics/room.py
-    #the above link provides an alternate method to more generalize this solution 
     T = 1/fs
-    ht1 = ht[:int(0.025*len(ht))]
-    #ht1 = ht[:int(0.1*len(ht))]
-    schroeder = np.empty(len(ht1))
-    for n in range(len(ht1)):
-        #backwards integration because integrating the rest of the array from a point n
-        schroeder[n] = np.sum(ht1[n:]**2) * T
-    
-    schroeder_dB = 10*np.log10(schroeder) 
-    
+    schroeder = np.cumsum(ht1[::-1]**2)[::-1]*T
+    schroeder_dB = 10*np.log10(schroeder)  
+
     if rt == 'T10':
         #determine T30 between -5dB and -15dB of the max value of the decay curve
         init = -5.0
@@ -348,8 +423,7 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
         end = -65.0
         factor = 1.0 #amount to mult. T30 by to extrapolate T60
     
-    
-    # Linear regression
+    #Linear regression
     #determine the value on the decay curve where it is nearest the init and end
     #values below the maximum of the the decay curve
     sch_init = schroeder_dB[np.abs(schroeder_dB - init).argmin()]
@@ -357,56 +431,110 @@ def T60meas(ht,fs, d = 0.6,c = 1478,rt = 'T60',plot = False,acc=False,alpha_p=0)
     #indices of where the decay curve matches the init and end condition
     init_sample = np.where(schroeder_dB == sch_init)[0][0]
     end_sample = np.where(schroeder_dB == sch_end)[0][0]
-    x = np.arange(init_sample, end_sample + 1) / fs
-    y = schroeder_dB[init_sample:end_sample + 1]
-    slope, intercept = stats.linregress(x, y)[0:2]
-    
-    """ dont think this works at all. does not get close to measured
-    #Reverberation time (T30)
+       
+    #Reverberation time (RT)
     #convert samples to time and determine the difference
     t_init = init_sample / fs
     t_end = end_sample / fs
-    T1 = t_end - t_init
-    T1 = factor*T1"""
-    
-    RT = np.abs(slope/fs)
-    T60 = RT *factor
+    RT = t_end - t_init
+    T60 = factor*RT
+    print('T60 =',T60,'s') 
     print('')
-    #print(f'{rt} from decay curve slope =',T1,'s')
-    print('T60 from decay curve slope =',np.around(T60,decimals=8),'s')
     print('')
-    #dimensions of tank
-    Lx = 1.22   #width of tank (m) 
-    Ly = 3.66   #length of tank (m)
-    V = Lx*Ly*d #volume relative to current water depth
     
-    if acc == True:
-        S = 2*(Ly*d+d*Lx)+Lx*Ly #total enclosed surface area minus air-water surface
-    else: 
-        S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
-    #solving Eyring equation w/propagation loss found in 661 notes eq 4-2.4.124
-    #with default of alpha_p=0 this simplifies to eq. 4-2.4.116
-    alpha_S = 1-np.exp(V/S*(8*alpha_p - (24*np.log(10))/(c*T60)))
     
     if plot == True:
-        t = np.linspace(0,len(ht1)/fs,len(ht1))*1000 #converted to ms from s
-        Level = 10*np.log10(ht1**2)
+        t = np.linspace(0,len(ht1)/fs,len(ht1))
+        Level = 10*np.log10((np.abs(ht1))**2)
         plt.figure()
         #plot the IR**2 in dB
         plt.plot(t,Level)
-        plt.xlabel('Time (ms)')
+        plt.xlabel('Time (s)')
         plt.ylabel('Level (dB)')
         plt.grid()
         #plot Decay Curve
         plt.plot(t,schroeder_dB)
         plt.legend([r'$10log[h^{2}(t)]$','Decay Curve'])
         est,_,_ = T60est(d,c)
-        plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms, T60est={np.around(est*1000,decimals=2)}ms & '+r'$\langle \alpha \rangle_{S} =$'+f'{np.around(alpha_S,decimals=4)}')    
+        plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms, T60est={np.around(est*1000,decimals=2)}ms')    
     
-    return T60, alpha_S
+    return T60
 
 
 
+def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
+    """
+    Calculate the spatially averaged absorption coefficient of the walls of the
+    tank based on the measured T60 of the tank (either averaged or over freq)
+    
+    Parameters
+    ----------
+    T60:        float or array of float;
+                Calculated reverberation time (T60) in the tank in seconds.
+                This is calculated using the T60meas function.
+    d:          float, Optional;
+                depth of water. Defaults to a common 0.6m of water in the tank
+    c:          float, Optional;
+                speed of sound in water. Defaults to 1478 rounded to nearest whole
+                value for any depth of water the tank can have, using Garrett's eq.
+                for the speed of sound in water relative to temperature, depth, and 
+                salinity for a temparature of 19 degrees C (rough avg. in tank).
+    acc:        boolian, Optional;
+                Account for the assumption that the water-air boundary is perfectly
+                reflective. Defaults to False to not make this assumption and give
+                the overall spatially averaged absorption coefficient. If True, 
+                then the spatially averaged absorption coefficient that is returned
+                only accounts for the walls and the floor of the enclosure. 
+    anech:      boolian, Optional;
+                Defaults to False to calculate with no anechoic panels in the tank. 
+                If true, the calculation takes into account the thickness of the 
+                panels on the inner dimensions of the tank environment for the 
+                calculation of the spatially averaged absorption coefficient.
+    alpha_p:    float or ndarray of float, Optional;
+                Absorption coefficient due to thermoviscous molecular propagation
+                losses. Defaults as 0 such that there is no propagation absorption.
+                Can use alpha_prop(f,T,S,pH,depth) code to feed in an array of 
+                frequency dependent absorption coefficients due to propagation 
+                losses through the water. 
+                
+    Returns
+    -------
+    alpha_S:    float;
+                Estimated spatially averaged absorption coefficient for the
+                room based on the measured T60 and the Eyring Equation.  
+    
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Calculate the spatially averaged absorption coefficient of the tank boudaries
+    from the measured T60 in the tank. 
+    
+    
+    last modified 5/18/2021      
+    """
+    import numpy as np
+    #dimensions of tank
+    Lx = 1.22   #width of tank (m) 
+    Ly = 3.66   #length of tank (m)
+    #Alter the dimensions relative to the thickness of the anechoic panels
+    if anech == True:
+        Lx = Lx - 2*0.05
+        Ly = Ly - 2*0.05
+        print('Calculating absorption coeff. w/ respect to anechoic panels')
+    V = Lx*Ly*d #volume relative to current water depth
+    
+    if acc == True:
+        S = 2*(Ly*d+d*Lx)+Lx*Ly #total enclosed surface area minus air-water surface
+        print('Calculating absorption coeff. w/ respect to walls only')
+    else: 
+        S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
+        print('Calculating absorption coeff. w/ respect to water surface & walls')
+    #solving Eyring equation w/propagation loss found in 661 notes eq 4-2.4.124
+    #with default of alpha_p=0 this simplifies to eq. 4-2.4.116
+    alpha_S = 1-np.exp(V/S*(8*alpha_p - (24*np.log(10))/(c*T60)))
+    
+    return alpha_S
 
 
 def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478):
@@ -668,7 +796,94 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
 
 
 
-########################
-# How does TL affect the T60 to adjust for underwater or if we do a T10
-# Water attenuation?
-########################
+
+
+def P_model_Pierce(Psi0,Psi,k,kn,mode,alpha,d=0.6,A=1,acc=False,anech=False,alpha_p=0):
+    """
+    Parameters
+    ----------
+    Psi0:       Ndarray of float;
+                Eigenfunctions at source position. Determined w/ TankFunc function.
+    Psi:        Ndarray of float;
+                Eigenfunctions at receiver position. Determined w/ TankFunc function.
+    k:          Ndarray of float;
+                Wavenumber of frequency band of interest.
+    kn:         Ndarray of float;
+                Eigenmodes of the tank environment. Determined w/ TankMode function
+    mode:       Ndarray of float;
+                Ordered Eigenmode array calculated and output by TankMode function
+    alpha:      Ndarray of float;
+                Spatially averaged absorption coefficient
+    d:          float, Optional;
+                depth of water. Defaults to a common 0.6m of water in the tank
+    A:          float, Optional;
+                Amplitude of the function. A=1 (default) ensures the solution is 
+                simply the Green's function. 
+    acc:        boolian, Optional;
+                Account for the assumption that the water-air boundary is perfectly
+                reflective. Defaults to False to not make this assumption and give
+                the overall spatially averaged absorption coefficient. If True, 
+                then the spatially averaged absorption coefficient that is returned
+                only accounts for the walls and the floor of the enclosure. 
+    anech:      boolian, Optional;
+                Defaults to False to calculate with no anechoic panels in the tank. 
+                If true, the calculation takes into account the thickness of the 
+                panels on the inner dimensions of the tank environment for the 
+                calculation of the spatially averaged absorption coefficient.
+    alpha_p:    float or ndarray of float, Optional;
+                Absorption coefficient due to thermoviscous molecular propagation
+                losses. Defaults as 0 such that there is no propagation absorption.
+                Can use alpha_prop(f,T,S,pH,depth) code to feed in an array of 
+                frequency dependent absorption coefficients due to propagation 
+                losses through the water. 
+    
+    Returns
+    -------
+    P:          Ndarray of float;
+                Green's function or pressure in the tank as a function of source 
+                and receiver positions. 
+    
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    This follows Pierce "Acoustics: An Introduction to its Physical Principles 
+    and Applications" 3rd Ed. eq 6.5.20 (2019) or more precisely Leishman 661 
+    notes 4-2C eq. 4-2.2.193 (2021)
+    
+    last modified 5/19/2021      
+    """
+    import numpy as np
+    #dimensions of tank
+    Lx = 1.22   #width of tank (m) 
+    Ly = 3.66   #length of tank (m)
+    #Alter the dimensions relative to the thickness of the anechoic panels
+    if anech == True:
+        Lx = Lx - 2*0.05
+        Ly = Ly - 2*0.05
+        print('Calculating w/ respect to anechoic panels')
+    V = Lx*Ly*d #volume relative to current water depth
+    if acc == True:
+        S = 2*(Ly*d+d*Lx)+Lx*Ly #total enclosed surface area minus air-water surface
+        print('Calculating w/ respect to walls only')
+    else: 
+        S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
+        print('Calculating w/ respect to water surface & walls')
+    #Spatially averaged absorption area including propagation absorption 
+    As = S*alpha_wall + 8*alpha_p*V 
+    x,y,z = mode[0],mode[1],mode[2]
+    if x == 0:
+        Ex = 1
+    else:
+        Ex = 2
+    if y == 0:
+        Ey = 1
+    else:
+        Ey = 2
+    Ez = 2
+    lamb = 1/(Ex*Ey*Ez)
+    P= -4*np.pi*A*np.sum((Psi*Psi0)/(V*lamb*(k**2-kn**2-1j*k*(As/(4*V)))))
+    
+    return P
+
+

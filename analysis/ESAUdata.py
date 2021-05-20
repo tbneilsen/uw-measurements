@@ -154,7 +154,6 @@ def ESAUdata(path,desire=[0],channels=[0],N = 450e3,Ncal = 450e3):
     last modified 04/06/2021
     """
     import numpy as np
-    import byuarglib as byu
     import os.path as check
     ##################################################
     #load generated signal and calibration measurement

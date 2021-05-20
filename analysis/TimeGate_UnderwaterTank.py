@@ -5,19 +5,10 @@ Created on Thu Jan 30 15:23:48 2020
 @author: cvongsaw
 """
 
-###############################################################################
-#*****************************************************************************#
-#*****************************************************************************#
-#*************************** INPUTS VALUES BELOW *****************************#
-#*****************************************************************************#
-#*****************************************************************************#
-###############################################################################
+
 
 def gatefunc(IR,fs,tgate,tb4=0.1):
     """
-    Compute the Sound Speed of the Water based on the Depth, Temperature, and 
-    Salinity of the water according to three well known models. Garrett, Medwin 
-    & Kuperman or Wilson. 
     
     Parameters
     ----------
@@ -42,9 +33,17 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
     -----
     Author: Cameron Vongsawad
     
+    Take only majority % of the zeros allowing to view just before the signal 
+    rises with % assumed roughly by fs values for an allowance of the signal.
+    but in reality these values are mostly arbitrarily trying to approach
+    very close to the initial signal considering fs.
+    
     
     Last Modified: 4/1/2021
     """
+    
+    """Might be good to look into constant fraction descrimination to find 
+    peak around the tgate time"""
     import numpy as np
     Nb4 = tb4/1000 *fs #convert to seconds and then samples before gating
     #where to start the time-gating or cutting off the signal to zero
