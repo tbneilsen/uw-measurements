@@ -7,7 +7,7 @@ Created on Thu Jan 30 15:23:48 2020
 
 
 
-def gatefunc(IR,fs,tgate,tb4=0.1):
+def gatefunc(IR,fs,tgate,tb4=0.0001):
     """
     
     Parameters
@@ -17,13 +17,14 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
     fs:     float;
             Sampling frequency of the input time domain signal. Measured in Hz.
     tgate:  float;
-            Amoung of time in seconds from the beginning of the input IR signal
+            Amount of time in seconds from the beginning of the input IR signal
             in which the reflection of interest is arriving that needs to be
             timegated out of the signal.
     tb4:    float, optional;
-            Defaults to 0.01ms. This is the time before the reflection that the 
-            timegating should start to cut off any buildup to the reflected signal. 
-            This should also ideally be after the initial direct signal. 
+            This is the time (in sec) before the reflection that the timegating 
+            should start to cut off any buildup to the reflected signal.This 
+            should also ideally be after the initial direct signal. Defaults 
+            to 0.1ms. 
 
     Returns
     -------
@@ -45,17 +46,15 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
     """Might be good to look into constant fraction descrimination to find 
     peak around the tgate time"""
     import numpy as np
-    Nb4 = tb4/1000 *fs #convert to seconds and then samples before gating
+    Nb4 = tb4*fs #convert to samples before gating
     #where to start the time-gating or cutting off the signal to zero
     fin = int(tgate*fs-Nb4) 
     start = 0 #start the time gating allowing everything from the beginning of ht
-    #convert time length to samples to determine the finish cutoff of ht
-    #fin = int(tgate*fs*percent)
     #cut off the IR before the first reflection being index "fin"
     IRgate = np.zeros(len(IR))
     IRgate[start:fin] = IR[start:fin] #replace up to gate with original
     tbuff = tb4/2 #buffer value to determine where to apply the hanning window.
-    damp = int(tbuff/1000*fs) #0.05ms of damping converted to samples
+    damp = int(tbuff * fs) #0.05ms of damping converted to samples
     #apply hanning window to portion of the array following original cutoff
     #this allows for the signal to more gradually ramp down to zeros. 
     IRgate[fin:fin+damp] = IR[fin:fin+damp]*np.hanning(damp)
