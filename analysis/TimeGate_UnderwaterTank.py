@@ -116,7 +116,8 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
     import numpy as np
     """
     Compute the first bounce reverberations of the BYU Hydroacoustics lab tank
-    in order to timegate signals. Assumes a rectangular volume. 
+    in order to timegate signals. Assumes a rectangular volume and calculates
+    path length from method of images to determine the time to travel said path.
     
     Parameters
     ----------
@@ -136,11 +137,11 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
 
     Returns
     -------
-    tshort: float;
-            shortest time for a single reflection in seconds. 
-    tside:  float
-            shortest time for single reflection of side wall reflections only 
-            but still allowing potential for seabed and surface reflections.
+    tshort:     float;
+                shortest time for a single reflection in seconds. 
+    tside:      float
+                shortest time for single reflection of side wall reflections only 
+                but still allowing potential for seabed and surface reflections.
     directpath: float;
                 distance of direct path from hydrophone to hydrophone
     
@@ -162,7 +163,7 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
     This code only allows for a single tuple of length len(A)=3 and len(R)=3 or 4
     Times printed in "ms" (milliseconds), however returned values in seconds
 
-    Last Modified: 4/1/2021
+    Last Modified: 6/1/2021
     
     """  
     
@@ -176,72 +177,46 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         XR, YR, ZR  : float, cartesian coordinates of Ran
             
         """
-        ###############################################################################
-        ######################### main code for direct path time ######################
-        ###############################################################################
-        directpath = np.sqrt((XA-XR)**2+(YA-YR)**2+(ZA-ZR)**2)      #direct distance eq
-        tdirect = (directpath)/c
+        #Direct Path & Time of flight
+        directpath = np.sqrt((XA-XR)**2+(YA-YR)**2+(ZA-ZR)**2)      
+        tdirect = (directpath)/c                                    
         
-        ###############################################################################
-        ######################### main code for bottom bounce #########################
-        ####################### determined through geometries #########################
-        ###############################################################################
-        range_b = np.sqrt(directpath**2 - np.abs(ZA-ZR)**2)         #r bottom z-y plane
-        rzA = ZA/np.sin(np.arctan((ZA+ZR)/range_b))
-        rzR = ZR/np.sin(np.arctan((ZA+ZR)/range_b))
-        tb = (rzA + rzR)/c                                          #bottom bounce time
+        #Bottom bounce
+        range_bottom = np.sqrt((XA-XR)**2+(YA-YR)**2+((-ZA)-ZR)**2)     
+        tb = (range_bottom)/c                                           
         
-        ###############################################################################
-        ######################### main code for top bounce ############################
-        ####################### determined through geometries #########################
-        ###############################################################################
+        #Top bounce
         ZAt = D - ZA                           #translate to looking from water surface
         ZRt = D - ZR
-        range_t = np.sqrt(directpath**2 - np.abs(ZAt-ZRt)**2)       #r top  z-y plane
-        rzAt = ZAt/np.sin(np.arctan((ZAt+ZRt)/range_t))
-        rzRt = ZRt/np.sin(np.arctan((ZAt+ZRt)/range_t))
-        tt = (rzAt + rzRt)/c                                        #top bounce time
+        range_top = np.sqrt((XA-XR)**2+(YA-YR)**2+((ZAt + D)-ZRt)**2)     
+        tt = (range_top)/c                                                  
         
-        ###############################################################################
-        ######################### main code for side1 x=0 bounce ######################
-        ####################### determined through geometries #########################
-        ###############################################################################
-        range_s1 = np.sqrt(directpath**2 - np.abs(XA-XR)**2)        #r x=0 x-y plane
-        rxAs1 = XA/np.sin(np.arctan((XA+XR)/range_s1))
-        rxRs1 = XR/np.sin(np.arctan((XA+XR)/range_s1))
-        ts1 = (rxAs1 + rxRs1)/c                                     #x=0 bounce time
+        #Side1 (x=0 in tank frame) bounce
+        range_s1 = np.sqrt(((-XA)-XR)**2+(YA-YR)**2+(ZA-ZR)**2)           
+        ts1 = (range_s1)/c                                               
         
-        ###############################################################################
-        ######################### main code for side2 X=X bounce ######################
-        ####################### determined through geometries #########################
-        ###############################################################################
+        #Side2 (X=X in tank frame) bounce
         Xmax = 1.22
-        XAs2 = Xmax - XA                       #translate to looking from water surface
+        XAs2 = Xmax - XA                       #translate to looking from Xmax side wall
         XRs2 = Xmax - XR
-        range_s2 = np.sqrt(directpath**2 - np.abs(XAs2-XRs2)**2)    #r x=x x-y plane
-        rxAs2 = XAs2/np.sin(np.arctan((XAs2+XRs2)/range_s2))
-        rxRs2 = XRs2/np.sin(np.arctan((XAs2+XRs2)/range_s2))
-        ts2 = (rxAs2 + rxRs2)/c                                     #x=x bounce time
-          
-        ###############################################################################
-        ################## main code for "front" (North) wall bounce 1 y=0 ############
-        ################## using the method of images                      ############
-        ###############################################################################
-        range_front = np.sqrt((XA-XR)**2+(YA-(-YR))**2+(ZA-ZR)**2)  #direct image
-        tfront = (range_front)/c                                    #front wall time
+        range_s2 = np.sqrt(((XAs2+Xmax)-XRs2)**2+(YA-YR)**2+(ZA-ZR)**2)   
+        ts2 = (range_s2)/c                                               
         
-        ###############################################################################
-        ################## main code for "back" (South) wall bounce 2 y=y##############
-        ################## using the method of images                      ############
-        ###############################################################################
-        Ymax = 3.66
-        range_back = np.sqrt((XA-XR)**2+(YA-(YR+Ymax))**2+(ZA-ZR)**2)   #direct image
-        tback = (range_back)/c                                      #front wall time
+        #"Front" (North) wall bounce (y=0 in tank frame)
+        range_front = np.sqrt((XA-XR)**2+(YA-(-YR))**2+(ZA-ZR)**2)  
+        tfront = (range_front)/c                                    
         
+        #"Back" (South) wall bounce (y=y in tank frame)
+        Ymax = 3.66 #adjusted to referencing the boundary at Ymax
+        range_back = np.sqrt((XA-XR)**2+(YA-(YR+Ymax))**2+(ZA-ZR)**2)   
+        tback = (range_back)/c                                      
         
-        
+        #Organize data
         t = (tb,tt,ts1,ts2,tfront,tback)
+        #Shortest time for a single reflection overall
         tshort = min(t)
+        #Shortest time for a single Side Wall Reflection 
+        #Allows earlier reflections from water-air surface or "seabed" reflections
         tside = (ts1,ts2,tfront,tback)
         tside = min(tside)
         print('')
@@ -262,19 +237,15 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         return tshort,tside,directpath     
         
               
-        #### for tank frame coordinates, no need to translate coordinates #############
+        #### No need to translate coordinates for tank frame coordinates #############
     if Coordinate == 'tank': 
         ###############################################################################
         ## Hydrophone Locations (Insert AEgir & Ran Tank coordinates (X,Y,Z) in m) ####
         ###############################################################################
-                        #"AEgir" Tank Frame position (X,Y,Z) TCP TC4038  
-        XA   = AEgir_pose[0]    
-        YA   = AEgir_pose[1] 
-        ZA   = AEgir_pose[2]
-                        #"Ran" Tank Frame position (X,Y,Z) TCP TC4034 
-        XR   = Ran_pose[0]           
-        YR   = Ran_pose[1]            
-        ZR   = Ran_pose[2]
+        #"AEgir" Tank Frame TCP position (X,Y,Z)
+        XA, YA, ZA = AEgir_pose[0], AEgir_pose[1], AEgir_pose[2]
+        #"Ran" Tank Frame TCP position (X,Y,Z)
+        XR, YR, ZR = Ran_pose[0], Ran_pose[1], Ran_pose[2]
         
         tshort,tside,directpath = pathtime(XA,YA,ZA,XR,YR,ZR)
     
@@ -285,21 +256,12 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         ########## TCP Locations (insert current TCP locations in mm)##################
         #### This is in correlation with default settings for the end connector ####### 
         ###############################################################################
-                        #"AEgir" position TCP TC4038  
-        TCPxA   = AEgir_pose[0]    
-        TCPyA   = AEgir_pose[1] 
-        TCPzA   = AEgir_pose[2]
-                        #"Ran" position TCP TC4034 
-        TCPxR   = Ran_pose[0]           
-        TCPyR   = Ran_pose[1]            
-        TCPzR   = Ran_pose[2]
+        #"AEgir" TCP position
+        TCPxA,TCPyA,TCPzA = AEgir_pose[0], AEgir_pose[1], AEgir_pose[2]
+        #"Ran" TCP position
+        TCPxR,TCPyR,TCPzR = Ran_pose[0],Ran_pose[1],Ran_pose[2]
         TCPvR   = Ran_pose[3]    #Vention 7th axis positioning adjustment for y direction     
         
-        ###############################################################################
-        ######## Tank Frame Locations (insert current tank locations in mm)############
-        ######## these are directly measured values. must comment out future ##########
-        ######## translation of positioning if used. OR translation trumps this #######
-        ###############################################################################
                         
         #convert mm positioning to m
         TCPxA = TCPxA/1000 
@@ -313,7 +275,6 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         ###############################################################################
         ## translating TCP position to tank coordinate positions (/1000 for mm => m) ##
         ## Home position used for conversion w/end connector settings of both #########
-        ## "AEgir" and "Ran" measured in mm initially and then later converted to m ###
         # Home position in the tank frame for "Ran" should be measured at VR = 0 ######
         ###############################################################################
         XA_TCP_home = 392.69/1000
