@@ -1,213 +1,350 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Feb 16 14:39:55 2021
+Created on Mon Jul  6 12:21:13 2020
 
-@author: cvongsaw
+TEST CODE
+
+@author: cvong
 """
 
-def IR(rec,gen,fs,wiener=False,domain='f'):
-    """
-    Parameters
-    ----------
-    rec:        ndarray of float of size 1;
-                time domain of the received signal. Should be real valued.
-    gen:        ndarray of float;
-                time domain of the generated signal. Should be real valued.
-    fs:         float; 
-                Sampling frequency in Hz
-    wiener:     Boolean {True or False}; optional;
-                False (default) for using direct deconvolution instead of Wiener
-                deconvolution in frequency domain. If (True), the Wiener 
-                deconvolution is performed. Wiener deconvolution acts as a 
-                regularization which helps prevent dividing by zero allowing for 
-                a more robust deconvolution while maintaining an account for any 
-                system response. 
-    domain:     string, Optional;
-                Choice of domain performs the inverse filter in the initial step
-                in either the temporal domain ('t' or 'time' or 'temporal') or 
-                in the frequency domain (default) ('f' or 'freq' or 'frequency') 
-                which is equivalent to determining the the cross-spectral density 
-                and the auto-spectral density for the use in the deconvolution. 
-                The end deconvolution always occurs by division in frequency domain.
-                
-    Returns
-    -------
-    ht:         ndarray of float;
-                Real valued impulse response (IR) of a measurement.
-    
-    Notes
-    -----
-    Author: Cameron Vongsawad
-    
-    The IR h(t) is determined following Gemba(2014) eq. 3.3.6 scaling similar 
-    to a matched filter and deconvolving in order to obtain the pure delay of h(t).
-    Cite: "Characterization of underwater acoustic sources recorded in reverberant
-    environments with application to scuba signatures" Gemba (2014) Dissertation.
-    Also see eq. 3.3.3 and 3.3.5
-    
-    This also follows the directions from Farina 2000 and Farina 2007 on IR
-    from swept-sines. 
-    
-    Also see eq. 1.7.1, 1.7.2, and 1.7.3 from Leishman 560 notes 2019.
-    
-    Deconvolution all in the frequency domain should be much faster computationally.
-    
-    Dr. Brian Anderson published a paper discussing Wiener deconvolution as a
-    regularization parameter for deconvolution. He particularly discusses 
-    optimizing lambda."Time reversal focusing of high amplitude sound in a 
-    reverberation chamber" (2018) Willardson, Anderson, Young, Denison, Patchett.
-    https://doi.org/10.1121/1.5023351
-    
-    last modified 5/17/2021
-    """
-    import numpy as np
-    if domain == 'time' or 't' or 'temporal':    
-        #rec(t)*gen(-t)) = h(t)*gen(t)*gen(-t) eq 3.3.5 solve for h(t)
-        gen_flip = np.flip(gen) 
-        #np.convolve(gen,gen_flip) == sci.correlate(gen,gen) by def.
-        #the inverse filter of the function is np.convolve(gen,gen_flip)
-        acorr = np.convolve(gen,gen_flip,mode='same')
-        xcorr = np.convolve(rec,gen_flip,mode='same')
-        #import scipy.signal as sci 
-        #acorr = sci.correlate(gen,gen,mode='same',method='auto')
-        #xcorr = sci.correlate(rec,gen,mode='same',method='auto')
-        
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(np.abs(acorr))
-        plt.title('Delta Function as result of the Inverse Filter Convolution')
-        plt.xlabel('time (Samples)')
-        plt.ylabel('Amplitude')
-        plt.grid()
-        
-        #Division in the frequency domain is a deconvolution in the time domain. 
-        #which gives H(f) and then ifft(H(f))=h(t)
-        Xcorr = np.fft.fft(xcorr) #double-sided frequency response
-        Acorr = np.fft.fft(acorr) #double-sided frequency response
-        #f = np.fft.fftfreq(len(xcorr),d=1/fs)
-        
-    if domain == 'frequency' or 'freq' or 'f':
-        #COMPUTE ALL of the deconvolution in FREQ DOMAIN instead of time domain
-        Xcorr = np.fft.fft(rec)*np.conj(np.fft.fft(gen))
-        Acorr = np.fft.fft(gen)*np.conj(np.fft.fft(gen))
-        #f = np.fft.fftfreq(len(gen),d=1/fs)
-    
-    if wiener == True:
-        print('Performing deconvolution via Wiener deconvolution preventing dividing by zero')
-        #Wiener Deconvolution deals with the near zero values which cause processing noise
-        #and high frequency aliasing.
-        lamb = 0.005 #scaling parameter arbitrarily chosen 
-        sigma = lamb*np.mean(np.abs(Acorr)) #expectation or noise or SNR
-        WDeconv = np.conj(Acorr)*Xcorr/(np.abs(Acorr)**2+sigma**2)
-        Deconv = WDeconv
-    else: 
-        print('Performing deconvolution via direct division in frequency domain')
-        #Perform standard deconvolution by direct division in frequency domain. 
-        Deconv = Xcorr/Acorr
-        
-    #bring back to time domain with inverse fast fourier transform (IFFT)
-    ht = np.real(np.fft.ifft(Deconv)) #ensure real valued as it should be
-    return ht
-    
-    
+import numpy as np
+import byuarglib as byu
+import sys as directory
+#keep using the natural working directory
+directory.path.insert(0,'C:/Users/cvongsaw/Box/UW Research/Code/uw-measurements')
+#add a second working directory
+directory.path.insert(1,'C:/Users/cvongsaw/Box/UW Research/Code/underwater-measurements/analysis/')
+from readLogFile import readLogFile
+import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 15,
+          'figure.figsize': (15, 10),
+         'axes.labelsize': 24,
+         'axes.titlesize':28,
+         'axes.titleweight':'bold',
+         'xtick.labelsize':'xx-large',
+         'ytick.labelsize':'xx-large',
+         'lines.linewidth':2}
+pylab.rcParams.update(params)
+import scipy.signal as sci 
+import ESAUpose as pose
+import ESAUdata as data
+import ESAUResponse as response
+import TankCharacterization as tank
+import TimeGate_UnderwaterTank as tg
+#import pdb
+#pdb.set_trace()
+
+###############################################################################
+###############################################################################
+#when switching file name via copy/paste, must change forward and back slashes
+###############################################################################
+###############################################################################
+date =  '2021-02-11' #scan 14,15,16 2 anechoic scan robot setup 60Hz-3kHz
+date2 = '2021-02-18' #scan 6 & 7 10k-100k AEgir 7 Ran receiving (Motion problems)
+date3 = '2021-02-19' #scan 3 maybe best anechoic test 10k-100k lots of clipping on cal signal still
+date4 = '2021-02-24' #scan 3,7,8(noise),9(noise)
+date5 = '2021-02-26' # TL measurement [scan 3(5 points) and 4(10 points) good]
+date6 = '2021-03-23' #short cal length long signal length
+date7 = '2021-05-03' #TL measure (10 points) Scan 1 and 3. Errors with position saving
+date = date6
+
+scan = '3'
+signal = '0.5s Chirp 10Hz-10kHz'
+#desire is the list of all the scans you care to actually look at in this analysis
+#desire = [0,4,8] #3 point anechoic x-axis scan
+#desire = [0,6,12,18,24] #larger anechoic scan 5 point
+desire = [0]#,1,2,3,4,5,6,7,8,9]
+channels = [1] #recording channels of interest
+cal_channel = [1] #recorded calibration of interest (currently should only be len(cal_channel)=1)
+legend = ['0']#,'1','2','3','4','5','6','7','8','9']
+#legend = ['Near Wall','Middle','Anechoic']
+test = f'{date3} scan{scan} {signal}'
+
+year = date[0:4]
+path = f'W:/uw-measurements-tank/{year}/{date}/{date}_scan{scan}/'
+filename = 'ID000_001log.txt'
+
+freqMin,freqMax,temp,fs,sigL,depth,xSource,ySource,zSource,xRec,yRec,zRec = readLogFile(filename,path)
+startzero = 0.5 #leading zeros of the signal
+trail = 2.49996 #trailing zeros
+trec = startzero + sigL + trail #time record length in sec
+N = fs*trec
+
+#generated CALIBRATION signal
+fscal = fs #sampling frequency
+startzerocal = 0.5 #leading zeros of the signal
+sigLcal = sigL #signal length
+trailcal = 0.5 #trailing zeros
+treccal = startzerocal + sigLcal + trailcal #time record length in sec
+Ncal = fscal*treccal
+Acal = (0.6,2.14,depth/2)
+Rcal = (0.6,2.06,depth/2)
+
+###############################################################################
+###############################################################################
+##############################################################################
+##############################################################################
+#load generated signal and calibration measurement
+#gen, calgen, cal, ch0, ch1, ch2, ch3 = data.ESAUdata(path+scan, desire, channels, N, Ncal)
+
+gen, _, cal, _, ch1, _, _ = data.ESAUdata(path, desire, channels, N, Ncal)
+#calgen = gen
+
+
+#Load in positions, calculate range distance, plot scan positions desired
+A,R,dd = pose.ESAUpose(path, desire, plot=False, Acal = Acal, Rcal = Rcal)
+
+#A = ((0.7,2.1,0.32))
+#R = ((0.7,2.02,0.32))
+#time delays now allowing for a single measurement w/ single source/receiver pose
+c = tg.uwsoundspeed(D=depth,T=temp,S=0.03, model='Garrett')
+
+
+
+
+##############################################################################
+"""Plot Waveforms"""
+##############################################################################
+
+"""
+print('')
+print('plotting waveforms')
+print('')
+Time = len(cal[:,0])/fs
+t = np.arange(0,Time,1/fs)
+plt.figure()
+for i in range(len(desire)):
+    #plt.plot(t,gen)
+    plt.plot(t,ch1[:,i]-np.mean(ch1[:,i]))  # 0 mean to remove DC offset
+plt.title(f'{test} {signal} {date}')
+plt.xlabel('Time (s)')
+plt.ylabel('Amplitude (V)')
+plt.legend(legend)
+"""
+##############################################################################
+##############################################################################
+
+#need to update MeasGreen to handle various channels.and update the inputs
+#to use ch number instead of allsignals. 
+print('')
+print('')
+print('System Response...')
+#cal1 = np.ndarray.flatten(cal[:,cal_channel]) #obtain only the cal of interest for calculating the system response
+cal1 = cal[:,cal_channel[0]] ###!!change!!!####
+#ch1 = ch1[:,desire]
+ch1 = ch1[:,0] ##!!change!!!####
+
+tgate,_,dis = tg.gateValue(Acal,Rcal,c) 
+tdir = dis/c
+#how much to gate the signal in samples
+tb4gate = 0.0001 #s before first reflection tgate
+
+tt = np.linspace(0,len(cal1)/fs,len(cal1))      #time array for recorded signal
+tt = tt*1000 
+plt.figure()
+plt.plot(cal1)
+plt.title(f'Recorded Signal \n {signal} fs={fs/1000}kHz \n {date} scan{scan}')
+plt.xlabel('time (ms)')
+plt.ylabel('Amplitude')
+
+hsys,tsys,Hsys,fsys = response.SysResponse(cal1,gen,fscal,tgate=tgate,wiener=True,domain='f')
+
+
+Htank,ftank = response.TankResponse(ch1,gen,fs,hsys,wiener=True,domain='f')
+
+"""Calculate T60 from impulse response ht
+ht = np.abs(np.fft.ifft(Htank))
+T60 = tank.T60meas(ht,fs,t0=0,t1=int(len(ht)/fs),d=depth,c=c,rt='T60',plot=True)
+alpha_s = tank.alpha_wall(T60,depth,c,acc=False,anech=False,alpha_p=0)
+"""
+Hss = 2*Hsys[0:(int(len(Hsys)/2))]   #convert to single-sided FRF
+fss = fsys[0:int(len(fsys)/2)]/1000    #convert to single-sided from Hz to kHz
+Hss_dB = 10*np.log10(Hss) 
+
+#Hss1 = 2*Hsys1[0:(int(len(Hsys1)/2))]   #convert to single-sided FRF
+#fss1 = fsys1[0:int(len(fsys1)/2)]/1000    #convert to single-sided from Hz to kHz
+#Hss1_dB = 10*np.log10(Hss1/1e-6) 
+
+Hsstank = 2*Htank[0:(int(len(Htank)/2))]   #convert to single-sided FRF
+fsstank = ftank[0:int(len(ftank)/2)]/1000    #convert to single-sided from Hz to kHz
+Hsstank_dB = 10*np.log10(Hsstank/1e-6) 
+
+"""check IR relatively
+ir = response.IR(ch1,gen,fs,wiener=False,domain='f')
+ir1 = 10*np.log10(ir**2)
+tt = np.linspace(0,len(ir1)/fs,len(ir1))               #time array for ht
+tt = tt*1000 
+frf = np.fft.fft(ir)
+frf = 10*np.log10(frf/1e-6)
+frf = 2*frf[0:(int(len(frf)/2))]
+f = np.fft.fftfreq(len(ir),d=1/fs)
+f = f[0:int(len(f)/2)]/1000
+plt.figure()
+plt.plot(tt,ir)
+plt.title('straight IR')
+plt.xlabel('time (ms)')
+plt.ylabel('')
+plt.grid()
+plt.figure()
+plt.plot(f,frf)
+plt.title(f'Straight FRF')
+plt.xlabel('Frequency (kHz)')
+plt.ylabel(r'Level (dB re 1 $\mu Pa$)')
+plt.grid()
+"""
+plt.figure()
+plt.plot(tsys*1000,hsys)
+plt.axvline(tgate*1000,linestyle='dashed',color='g')
+plt.axvline(tdir*1000,linestyle='dashed',color='r')
+plt.xlabel('Time (ms)')
+plt.ylabel('Amplitude')
+plt.legend(['Chirp IR','Estimated First Reflection','Estimated Direct Signal'])
+plt.title(f'Time-Gated Calibration IR of {signal} fs ={fs}Hz')
+#plt.xlim(0,3)
+plt.grid()
+
+plt.figure()
+plt.plot(fss,Hss_dB)
+plt.title(f'Time-Gated Calibration FRF of {signal} Swept-Sine')
+plt.xlabel('Frequency (kHz)')
+plt.ylabel(r'Level (dB re 1 $\mu Pa$)')
+#plt.xlim(0,300)
+#plt.ylim(35,65)
+plt.grid()
+
+plt.figure()
+plt.plot(fsstank,Hsstank_dB)
+plt.title(f'Calibrated Tank Transfer Function of {signal} Swept-Sine')
+plt.xlabel('Frequency (kHz)')
+plt.ylabel(r'Level (dB re 1 $\mu Pa$)')
+#plt.xlim(0,300)
+#plt.ylim(35,65)
+plt.grid()
+
+
+#explore if this system response in reverse can give the recorded value
+#invest = sci.correlate(hsys1,np.flip(gen),mode='full',method='auto')
+#plt.figure()
+#plt.plot(ch1)
+#plt.plot(invest)
+#plt.title('recorded measure and calculated measure (from time domain)')
+
+
+"""
+#need to EDIT with the below link
+#https://www.askpython.com/python/examples/rmse-root-mean-square-error
+
+"""
 
 
 
 
 
-    
-def SysResponse(cal,gen,fs,tgate=0,wiener=False,domain='f'):
-    """
-    Parameters
-    ----------
-    cal:        ndarray of float;
-                Received calibration signal. Should be real valued.
-    gen:        ndarray of float;
-                Pure generated signal. Should be real valued.
-    fs:         float; 
-                Sampling frequency (Hz).
-    tgate:      float,Optional;
-                Time of the first wall reflection determined through timegateTank. 
-                This is the time we will use to determine the time of the first 
-                reflection and timegate the impulse response of the calibrated
-                signal by. This input is optional if you want to timegate. If
-                not wanting to timegate the IR, leave tgate = 0 which is the default.
-                If tgate is nonzero, the IR will be gated according the input time.       
-    wiener:     Boolean {True or False}; optional;
-                False (default) for using direct deconvolution instead of Wiener
-                deconvolution in frequency domain. If (True), the Wiener 
-                deconvolution is performed. Wiener deconvolution acts as a 
-                regularization which helps prevent dividing by zero allowing for 
-                a more robust deconvolution while maintaining an account for any 
-                system response. 
-    domain:     string, Optional;
-                Choice of domain performs the inverse filter in the initial step
-                in either the temporal domain ('t' or 'time' or 'temporal') or 
-                in the frequency domain (default) ('f' or 'freq' or 'frequency') 
-                which is equivalent to determining the the cross-spectral density 
-                and the auto-spectral density for the use in the deconvolution. 
-                The end deconvolution always occurs by division in frequency domain.            
-                
-    Returns
-    -------
-    ht:         ndarray of float;
-                Real valued impulse response (IR) of the measurement chain neglecting 
-                effects of the water and tank environment through timegating only 
-                direct signal with a small propagation assumption. 
-    t:          ndarray of float;
-                Time array for the IR h(t) in seconds (s)
-    Hf:         ndarray of complex; 
-                Complex two-sided Frequency Response to account for all transducer,
-                amplifier, etc. in the measurement chain.     
-    f:          ndarray of float
-                frequency array in (Hz)
-    
-    Notes
-    -----
-    Author: Cameron Vongsawad
-    
-    Measurements should be taken with source and receiver close together and 
-    in the center of the tank so it is easy to time gate the signal. Not too 
-    close that nonlinear effects occur. The callibration position should already
-    be hard coded into ESAU but can be changed manually. 
-    
-    The IR h(t) is determined first by timegating the signal for only direct sound
-    then following Gemba(2014) eq. 3.3.6 and Farina 2000,2007 with the use of an 
-    inverse filter and scaling similar to a matched filter and deconvolving in 
-    order to obtain the pure delay of h(t).
-    Cite: 
-    "Characterization of underwater acoustic sources recorded in reverberant
-    environments with application to scuba signatures" Gemba (2014) Dissertation
-    
-    Farina (2000)
-    Farina (2007)    
-    
-    Often a single-sided response is desired. We find the s-sResponse
-    as follows below:
-        Hss = 2*Hf[0:(int(len(Hf)/2))]      #convert to single-sided FRF
-        fss = f[0:int(len(f)/2)]            #convert to single-sided 
-    
-    last modified 5/17/2021
-    """
-    import numpy as np
-    from ESAUResponse import IR
-    
-    ht = IR(cal,gen,fs,wiener=wiener,domain=domain)    #IR through deconvolution
-    t = np.linspace(0,len(ht)/fs,len(ht))           #time array for ht
-    
-    if tgate !=0:
-        print('Timegating the IR of the signal...')
-        import TimeGate_UnderwaterTank as tg
-        ht = tg.gatefunc(ht,fs,tgate,tb4=0.1) #cut off wall reflections
-    
-    #calculate the FRF from the IR and obtain the associated freq array
-    print('calculating the 2-sided Frequency Response...')
-    #Report the double-sided time-gated FRF of the input IR
-    Hf = np.fft.fft(ht)               
-    #Report the double-sided associated freq array
-    f = np.fft.fftfreq(len(ht),d=1/fs)
-    
-    return ht,t,Hf,f
+
+
+##############################################################################
+##############################################################################
+#OASPL w/ and w/out panels
+##############################################################################
+##############################################################################
+
+##############################################################################
+"""OASPL"""
+##############################################################################
+
+
+"""
+#Calculate the overall sound pressure level with respect to 1 microPascal as is
+#standard for underwater acoustics, rounded to 4 decimal places. 
+print('')
+print('calculating OASPL re 1e-6 Pa from timewaveform...')
+OASPL = np.empty(len(desire))
+for i in range(len(desire)):
+    OASPL[i] = np.round(10 * np.log10( np.mean( np.square( ch0[:,i] ) ) /1e-6**2),4)
+print(f'OASPL{legend} = {OASPL}')
+"""
+##############################################################################
+
+"""
+gate_dir = np.argwhere(t<0.34e-3)
+gate_dir = max(gate_dir[:,0])
+gate_min = np.argwhere(t>0.34e-3)
+gate_min = min(gate_min[:,0])
+gate_max = np.argwhere(t<0.40e-3)
+gate_max = max(gate_max[:,0])
+IR_gate_dir = np.real(x0[:gate_dir, 0])
+IR_gate_anech = np.real(x0[gate_min:gate_max, 2])
+IR_gate_acryl = np.real(x0[gate_min:gate_max, 0])
+
+#OASPL 
+OASPL = np.empty((1,len(desire)))
+for i in range(len(desire)):
+    OASPL[:,i] = byu.OASPLcalc(ch0[:,i])
+print(OASPL)
+"""
+
+#frequency domain level difference from IR
+"""
+No worky...
+Gxx_dir,flevel,OASPL_dir = byu.autospec(IR_gate_dir,fs,pref=1e-6)
+Gxx_anech,flevel,OASPL_anech = byu.autospec(IR_gate_anech,fs,pref=1e-6)
+Gxx_acryl,flevel,OASPL_acryl = byu.autospec(IR_gate_acryl,fs,pref=1e-6)
+diff_FR_OASPL = OASPL_anech - OASPL_acryl
+"""
+"""
+FR_dir = np.fft.fft(x0[:gate_dir, 0])
+FR_anech = np.fft.fft(x0[gate_min:gate_max, 2])
+FR_acryl = np.fft.fft(x0[gate_min:gate_max, 0])
+level_dir = 10*np.log10(np.sum(np.conj(FR_dir)*FR_dir)/1e-6)
+level_anech = 10*np.log10(np.sum(np.conj(FR_anech)*FR_anech)/1e-6)
+level_acryl = 10*np.log10(np.sum(np.conj(FR_acryl)*FR_acryl)/1e-6)
+diff_level = level_anech - level_acryl
+diff_echo = level_anech - level_dir
+
+
+#time domain from IR OASPL Difference
+#OASPL = 10*np.log10(np.sqrt(np.sum(np.conj(FR_dir)*FR_dir))/1e-6)  # I think this needs to be freq domain
+oaspl1 = 20*np.log10(np.sqrt(np.mean(IR_gate_dir**2))/(1e-6)**2)
+oaspl2 = 20*np.log10(np.sqrt(np.mean(IR_gate_anech**2))/(1e-6)**2)
+oaspl3 = 20*np.log10(np.sqrt(np.mean(IR_gate_acryl**2))/(1e-6)**2)
+echo_diff = oaspl2 - oaspl3
+echo = oaspl2 - oaspl1
+"""
+"""
+##############################################################################
+##############################################################################
+#determine anechoic effect in frequency domain by finding the decibel difference
+#between acrylic and anechoic measure. Use of rolling mean to smooth data
+diff_levelband = 20*np.log10(yssband[:,2]/yssband[:,0])
+difmeanband = np.mean(diff_levelband)
+
+diff_levelall = 20*np.log10(yss[:,2]/yss[:,0])
+difmeanall = np.mean(diff_levelall)
+"""
+
+
+
+
+
+
+##############################################################################
+##############################################################################
+
+"""
+#Calculate the overall sound pressure level with respect to 1 microPascal as is
+#standard for underwater acoustics, rounded to 4 decimal places. This is
+#calculating from the IR instead of the timewaveform as seen above. 
+print('')
+print('calculating IR OASPL re 1e-6 Pa...')
+OASPL = np.empty(len(desire))
+for i in range(len(desire)):
+    OASPL[i] = np.round(10 * np.log10( np.mean( np.square( x0[:,i] ) ) /1e-6**2),4)
+print(f'OASPL{legend} = {OASPL}')
+"""
+
+##############################################################################
+##############################################################################
 
 
 
@@ -217,114 +354,6 @@ def SysResponse(cal,gen,fs,tgate=0,wiener=False,domain='f'):
 
 
 
-def TankResponse(rec,gen,fs,sysIR,wiener=True,domain='f'):
-    """
-    Parameters
-    ----------
-    rec:        ndarray of float;
-                Received signal. Should be real valued.
-    gen:        ndarray of float;
-                Pure generated signal. Should be real valued.
-    fs:         float; 
-                Sampling frequency (Hz)
-    sysIR:      ndarray;
-                This is the system impulse response h(t) of the whole measurment 
-                chain found between two close points using SystemResponse func.         
-    wiener:     Boolean {True or False}; optional;
-                False (default) for using direct deconvolution instead of Wiener
-                deconvolution in frequency domain. If (True), the Wiener 
-                deconvolution is performed. Wiener deconvolution acts as a 
-                regularization which helps prevent dividing by zero allowing for 
-                a more robust deconvolution while maintaining an account for any 
-                tank response effects. 
-    domain:     string, Optional;
-                Choice of domain performs the inverse filter in the initial step
-                in either the temporal domain ('t' or 'time' or 'temporal') or 
-                in the frequency domain (default) ('f' or 'freq' or 'frequency') 
-                which is equivalent to determining the the cross-spectral density 
-                and the auto-spectral density for the use in the deconvolution. 
-                The end deconvolution always occurs by division in frequency domain.
-                 
-    Returns
-    -------
-    H_tank:     ndarray of float; 
-                Complex two-sided Greens function of Frequency Response of the Tank 
-                envrionment 
-    f:          ndarray of float;
-                Two-sided frequency array matching the frequency response H_tank             
-    
-    Notes
-    -----
-    Author: Cameron Vongsawad
-    
-    This greens function is relative to the individual positions of the Source
-    and Receiver in the tank. To use this, you will need to also run the 
-    SystemResponse functin to obtain the frequency response of the 
-    measurement chain (transducers,etc.)
-    
-    last modified 5/17/2021
-    """
-    import numpy as np
-    from ESAUResponse import IR 
-    #obtain the IR of the recorded signal relative to the generated signal
-    ht = IR(rec,gen,fs,wiener=wiener,domain=domain)
-    #if ht.size != sysIR.size, zeropadding is necessary at the end of the smaller
-    #so they are both of the same length, thus interpolating the FRF which allows
-    #the components of the deconvolution to be the same size. 
-    if len(ht)<len(sysIR):
-        #number of zeros needed for padding to obtain same size for ht
-        nzeros =int(np.abs(len(ht)-len(sysIR)))
-        h = np.zeros(len(ht))
-        fin = int(.999*len(ht))
-        damp = int(0.0005*len(ht))
-        h[0:fin] = ht[0:fin] #replace up to gate with original
-        #apply half-hanning window to last portion of the array this allows for
-        #the signal to more gradually ramp down to zeros to be padded. 
-        h[fin:fin+damp] = ht[fin:fin+damp]*np.hanning(damp)
-        #repopulate first half of that damping data keeping original array information
-        h[fin:int(fin+damp/2)] = ht[fin:int(fin+damp/2)]
-        #pad the end of the array with zeros making up for the difference
-        ht0 = np.pad(h,(0,nzeros),'constant',constant_values=(0,0))
-        sys = sysIR
-
-    if len(sysIR)<len(ht):
-        nzeros =int(np.abs(len(ht)-len(sysIR)))
-        s = np.zeros(len(sysIR))
-        fin = int(.999*len(sysIR))
-        damp = int(0.0005*len(sysIR))
-        s[0:fin] = sysIR[0:fin] #replace up to gate with original
-        #apply hanning window to last portion of the array this allows for
-        #the signal to more gradually ramp down to zeros to be padded. 
-        s[fin:fin+damp] = sysIR[fin:fin+damp]*np.hanning(damp)
-        #repopulate first half of that damping data keeping original array information
-        s[fin:int(fin+damp/2)] = sysIR[fin:int(fin+damp/2)]
-        sys = np.pad(s,(0,nzeros),'constant',constant_values=(0,0))
-        ht0 = ht
-    
-    if len(sysIR) == len(ht):
-        sys = sysIR
-        ht0 = ht
-    
-    #Obtain frequency response of both the sysIR and ht for deconvolution in freq.
-    Sys = np.fft.fft(sys)
-    Hf = np.fft.fft(ht0)
-    f = np.fft.fftfreq(len(ht0),d=1/fs) #associated frequency array        
-            
-    if wiener == True:
-        print('performing deconvolution via Wiener deconvolution preventing dividing by zero')
-        #Wiener Deconvolution deals with the near zero values which cause processing noise
-        #and high frequency aliasing.
-        lamb = 0.005 #scaling parameter arbitrarily chosen 
-        sigma = lamb*np.mean(np.abs(Sys)) 
-        WDeconv = np.conj(Sys)*Hf/(np.abs(Sys)**2+sigma**2)
-        Deconv = WDeconv
-    else: 
-        print('Performing deconvolution via direct division in frequency domain')
-        Deconv = Hf/Sys #standard deconvolution is division in freq domain
-        
-    Htank = Deconv
-    
-    return Htank,f  
 
 
 
