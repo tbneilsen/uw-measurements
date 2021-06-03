@@ -202,5 +202,4 @@ def readLogFile(filename,location):
     yRec = float(receiverPos[7:12])
     zRec = float(receiverPos[13:-1])
     
-    return freqMin,freqMax,tempWater,fs,signalDuration,hWater,xSource,ySource,zSource,xRec,yRec,zRec
-                              
+    return freqMin,freqMax,tempWater,fs,signalDuration,hWater,xSource,ySource,zSource,xRec,yRec,zRec                             

@@ -13,7 +13,111 @@ Created on Thu Jan 30 15:23:48 2020
 #*****************************************************************************#
 ###############################################################################
 
+<<<<<<< Updated upstream
 def timegateTank(AEgir_pose, Ran_pose, D=0.2,T=16.0,S=0.03, Coordinate='tank'):
+=======
+def gatefunc(IR,fs,tgate,tb4=0.1):
+    """
+    Compute the Sound Speed of the Water based on the Depth, Temperature, and 
+    Salinity of the water according to three well known models. Garrett, Medwin 
+    & Kuperman or Wilson. 
+    
+    Parameters
+    ----------
+    IR:     ndarray;
+            Impulse Response or time domain signal. 
+    fs:     float;
+            Sampling frequency of the input time domain signal. Measured in Hz.
+    tgate:  float;
+            Amoung of time in seconds from the beginning of the input IR signal
+            in which the reflection of interest is arriving that needs to be
+            timegated out of the signal.
+    tb4:    float, optional;
+            Defaults to 0.1 ms. This is the time before the reflection that the 
+            timegating should start to cut off any buildup to the reflected signal. 
+            This should also ideally be after the initial direct signal. 
+
+    Returns
+    -------
+    IRgate: ndarray;
+            Time-gated array of the input signal.  
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    
+    Last Modified: 4/1/2021
+    """
+    import numpy as np
+    Nb4 = tb4/1000 *fs #convert to seconds and then samples before gating
+    #where to start the time-gating or cutting off the signal to zero
+    fin = int(tgate*fs-Nb4) 
+    start = 0 #start the time gating allowing everything from the beginning of ht
+    #convert time length to samples to determine the finish cutoff of ht
+    #fin = int(tgate*fs*percent)
+    #cut off the IR before the first reflection being index "fin"
+    IRgate = np.zeros(len(IR))
+    IRgate[start:fin] = IR[start:fin] #replace up to gate with original
+    tbuff = tb4/2 #buffer value to determine where to apply the hanning window.
+    damp = int(tbuff/1000*fs) #0.05ms of damping converted to samples
+    #apply hanning window to portion of the array following original cutoff
+    #this allows for the signal to more gradually ramp down to zeros. 
+    IRgate[fin:fin+damp] = IR[fin:fin+damp]*np.hanning(damp)
+    #repopulate first half of that damping data keeping original array information
+    IRgate[fin:int(fin+damp/2)] = IR[fin:int(fin+damp/2)]
+    
+    return IRgate
+
+
+def uwsoundspeed(D=0.2,T=16.0,S=0.03,model='Garrett'):
+    """
+    Compute the Sound Speed of the Water based on the Depth, Temperature, and 
+    Salinity of the water according to three well known models. Garrett, Medwin 
+    & Kuperman or Wilson. 
+    
+    Parameters
+    ----------
+    #Water Characteristics in the Tank#
+    D:  float, optional;
+        water depth (m) where 0<= D <=1000m
+    T:  float, optional;
+        temperature in Celcius where -2<= T <=24.5 
+    S:  float, optional;
+        salinity where 0.030<= S <=0.042 grams salt per kg H20 (aka parts per
+        thousand = ppt)
+    Returns
+    -------
+    c:  float;
+        speed of sound in water for the specified depth, temperature and salinity   
+    
+    Notes
+    -----
+    Author: Cameron Vongsawad
+
+    Last Modified: 4/1/2021
+    """
+    ###############################################################################
+    ######## sound speed (m/s), Cite Garrett valid w/in +-0.2m/s ##################
+    ###### appears to be accurate w/in 0.000969% of wiki value @20C ###############
+    ########## effects of depth is negligible in the tank limits ##################
+    ########### EQ 11.26 pg 619 Garrett "Understanding Acoustics" #################
+    ###############################################################################
+    if model == 'Garrett' or 'garrett' or None:
+        c = 1493 + 3*(T-10) - 0.006*(T-10)**2 - 0.04*(T-18)**2 + 1.2*(S-35)- 0.01*(T-18)*(S-35) + D/61
+    
+    #medwin & Kuperman Encyclo. of Ocean Sciences 2nd ed. 2001
+    if model == 'Kuperman' or 'Medwin' or 'MedwinKuperman':
+        c = 1449.2 + 4.6*T - 0.055*T**2 + 0.00029*T**3 + (1.34 - 0.010*T)*(S - 35) + 0.016*D
+
+    #Christ, WenliSr., The ROV Manual 2nd ed. 2014 from simplified Wilson's 1960
+    #S is in PSU which is basically equivalent to ppt
+    if model == 'Wilson':   
+        c = 1449 + 4.6*T - 0.055*T**2 + 0.0003*T**3 + 1.39*(S - 35) + 0.017*D
+    return c
+
+
+def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
+>>>>>>> Stashed changes
     import numpy as np
     """
     Compute the first bounce reverberations of the BYU Hydroacoustics lab tank
