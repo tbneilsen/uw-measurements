@@ -64,7 +64,7 @@ def readLogFile(filename,location):
     
     
     mylines = []
-    with open(filename,"rt") as myfile: 
+    with open(location+filename,"rt") as myfile: 
         for myline in myfile:
             mylines.append(myline.rstrip('\n'))
 
