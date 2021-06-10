@@ -3,7 +3,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import cmath as cm
 import matplotlib.gridspec as gridspec
 
 import pdb
@@ -16,6 +15,31 @@ import uwlib
 from uwlib.orca import ORCA
 from ESAUdata import ESAUdata
 from readLogFile import readLogFile
+import sys
+sys.path.append('/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20')
+
+path1 = 'D:/2021-05-18_scan6' # 100 kHz, 10 points
+path2 = 'D:/2021-05-18_scan7' # 100 kHz, 10 points
+path3 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan2' # 100 kHz, 100 points
+#path3 = 'D:/2021-05-20_scan2' # 100 kHz, 100 points
+#path4 = 'D:/2021-05-20_scan3' # 50 kHz, 100 points
+path4 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan3'
+path5 = 'D:/2021-05-25_scan1' # 100 kHz, 100 points, Ran is on whole time
+desire = [i for i in range(100)]
+channel = [0,1]
+c = 1478
+step = 1.0/99.0
+rec_start = 500190 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
+rec_end = 500600 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
+
+_,_,_,fs,signal_duration,_,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path4)
+leading_and_trailing = 1.0
+N = fs*(leading_and_trailing+signal_duration)
+_, _, _, _, rec_sig, _, _ = ESAUdata(path4,desire,channel,N)
+
+from Relative_TL_Tank import calcRelativeTransmissionLoss
+
+Range, rel_TL = calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end,fs,signal_duration,leading_and_trailing,step,c)
 
 SHOW_PLOTS = False
 SAVE_PLOTS = True
@@ -30,7 +54,6 @@ SAVE_FOLDER = "defaultoutput/2021-06"
 # plot_xaxis = "rec_depth"
 plot_xaxis = "range"
 plot_relative_tl = True # this is relative to the first point in the array
-scale_factor = 1 # this is how much we are scaling up the tank
 
 
 def main():
@@ -38,9 +61,9 @@ def main():
     max_modes = 1000
 
     # ["svp.gsl.no_shear.toml", "svp.gsl.toml"]
-    test_env_files = ["svp_tank.toml"]
+    test_env_files = ["svp_tank_air.toml"]
 
-    freqs = [100000.0/scale_factor] #np.array([300.0, 250.0, 200.0, 100.0])
+    freqs = [50000.0] #np.array([300.0, 250.0, 200.0, 100.0])
 
     for testfile in test_env_files:
         full_file = os.path.join(SVP_FOLDER, testfile)
@@ -50,17 +73,17 @@ def main():
         # pdb.set_trace()
 
         # set transmission loss source depth (in m)
-        src_depth = [0.121*scale_factor]#np.linspace(0.05, 5.0, 512)  # 1.0
+        src_depth = [0.121]#np.linspace(0.05, 5.0, 512)  # 1.0
 
         # set receiver depth(s) in m
-        rec_depth = [0.121*scale_factor] #[2.0,3.0, 3.5]#np.array([1.0, 2.0])
+        rec_depth = [0.121] #[2.0,3.0, 3.5]#np.array([1.0, 2.0])
 
         # set depths at which mode functions should be defined
         # orca gets confused if the exact same number is in both src_depth and rec_depth
         mode_depth = np.append(src_depth, rec_depth)
 
         # set ranges in m
-        ranges = np.linspace(0.1*scale_factor, 1.1*scale_factor, 1000) # [9.0]
+        ranges = np.linspace(0.1, 1.1, 1000) # [9.0]
 
         # set the source depth for the tl calculation
         logger.info("ORCA is set up and ready to go")
@@ -98,10 +121,11 @@ def main():
             # pdb.set_trace()
             if plot_relative_tl:
                 if plot_xaxis == "range": #if plotting TL vs. range
-                    plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])), label=str(f) + " Hz") # Relative TL
+                    plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])), label = "calc TL " + str(f) + " Hz") # Calc Relative TL
+                    plt.plot(Range,rel_TL, 'o', markersize = 1, label = "true TL " + str(f) + " Hz") # real Relative TL
                     plt.xlabel("Range, m")
-                    plt.title(testfile[:-5] + " " + str(rec_depth[0]) + ' m' + f' scaled by {scale_factor}') 
-                    save_name =testfile[:-5]+"_rel_tl_zr_"+str(rec_depth[0])+"m_" + str(f) + f"Hz_scaled_by_{scale_factor}.png" 
+                    plt.title(testfile[:-5] + " " + str(rec_depth[0]) + ' m' + " Real over Calc TL") 
+                    save_name =testfile[:-5]+"_rel_tl_zr_"+str(rec_depth[0])+"m_" + str(f) + "_real_over_calculated.png" 
                 elif plot_xaxis == "rec_depth": #if plotting TL vs. rec_depth
                     plt.plot(rec_depth, tl[0,:,0,iif], label=str(f) + " Hz")
                     plt.plot(rec_depth, tl[0,:,0,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])), label=str(f) + " Hz") # Relative TL
@@ -113,7 +137,7 @@ def main():
                     plt.plot(ranges, tl[0,0,:,iif], label=str(f) + " Hz") # Absolute TL
                     plt.xlabel("Range, m")
                     plt.title(testfile[:-5] + " " + str(rec_depth[0]) + ' m') 
-                    save_name =testfile[:-5]+"_tl_zr_"+str(rec_depth[0])+"m_" + str(f) + f"Hz_scaled_by_{scale_factor}.png" 
+                    save_name =testfile[:-5]+"_tl_zr_"+str(rec_depth[0])+"m_" + str(f) + "Hz.png" 
                 elif plot_xaxis == "rec_depth": #if plotting TL vs. rec_depth
                     plt.plot(rec_depth, tl[0,:,0,iif], label=str(f) + " Hz") # Absolute TL
                     plt.xlabel("Receiver Depth, m")
