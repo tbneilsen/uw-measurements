@@ -115,6 +115,8 @@ def main():
             )
 
         plt.figure()
+        # for iir, r in enumerate(ranges):
+
         for iif, f in enumerate(freqs):
             # plot TL in order: src_depth, rec_depth, range, freq
             # select source depth, receiver depth, range, freq
