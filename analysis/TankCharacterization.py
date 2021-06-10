@@ -35,8 +35,10 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     Returns
     -------
     filt_data:  Ndarray;
-                Array of the bandpass filtered data
-    mid_bands:       Ndarray of float;
+                2-d array of the bandpass filtered data. Row dimensions = same dimensions as mid_bands. 
+                Each row is the data for a given band. The column dimensions are the filtered data.
+                Ex) filt_data[0,:] would be all of the data for the first mid-band frequency. 
+    mid_bands:  Ndarray of float;
                 Array of octave or fractional octave frequencies
     
 
@@ -60,20 +62,6 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     
     
     #Generate Frequency Array
-    """Need to actually do this according to ISO and example from github above
-    This is currently a cheap solution to not get yelled at too much. """
-    #fc = np.array([250,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000])
-    #frequency array for low and high bounds of each bandwidth
-    #f_low = np.array([224,447,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913])
-    #f_high = np.array([282,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913,11220])
-    #index frequencies according to center frequencies that fit within f0,f1 limits. 
-    #fl = np.argwhere(fc>f0)
-    #fh = np.argwhere(fc<f1)
-    #freq = fc[fl:fh]
-    #f_low = f_low[fl:fh]
-    #f_high = f_high[fl:fh]
-    
-    #More robust way to generate frequency array
     G = 10**(3/10) #octave frequency ratio
     fr = 1000     #reference frequency
     
@@ -108,12 +96,14 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     #apply butterworth filter to data
     for i in range(len(mid_bands)):
         
+        
         b,a = butter(order, [lower_limits[i]/nyq, upper_limits[i]/nyq], btype='band')
         placeholder = lfilter(b,a,data)
         
         if i == 0:   #This initializes the filt_data array
             filt_data = np.zeros((len(mid_bands),len(placeholder)))
         
+        #Fill in filt_data with the butterworth filter
         for j in range(len(placeholder)):
             filt_data[i,j] = placeholder[j]
 
