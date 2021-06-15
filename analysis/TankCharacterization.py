@@ -15,7 +15,6 @@ of walls in tank from T60, Tank eigenmodes and Tank eigenfunctions
 """
 def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     """
-    This does not currently function correctly... it'll take some more time
     
     Parameters
     ----------
@@ -45,17 +44,18 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
 
     Notes
     -----
-    Author: Cameron Vongsawad
+    Author: Corey Dobbs
     
     Apply a bandpass filter to data in order to obtain an average over an 
     octave or fractional octave band centered at the middle frequencies output
     in freqs. 
     
+    References:
     https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
     
     https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
     
-    last modified 5/19/2021      
+    last modified 6/11/2021      
     """
     from scipy.signal import butter, lfilter
     import numpy as np
@@ -110,54 +110,7 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
 
     
     return filt_data, mid_bands
-=======
-                Array of the bandpass filtered data
-    freq:       Ndarray of float;
-                Array of octave or fractional octave frequencies
-    
 
-    Notes
-    -----
-    Author: Cameron Vongsawad
-    
-    Apply a bandpass filter to data in order to obtain an average over an 
-    octave or fractional octave band centered at the middle frequencies output
-    in freqs. 
-    
-    https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
-    
-    https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
-    
-    last modified 5/19/2021      
-    """
-    from scipy.signal import butter, lfilter
-    import numpy as np
-    
-    
-    #Generate Frequency Array
-    """Need to actually do this according to ISO and example from github above
-    This is currently a cheap solution to not get yelled at too much. """
-    fc = np.array([250,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000])
-    #frequency array for low and high bounds of each bandwidth
-    f_low = np.array([224,447,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913])
-    f_high = np.array([282,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913,11220])
-    #index frequencies according to center frequencies that fit within f0,f1 limits. 
-    fl = np.argwhere(fc>f0)
-    fh = np.arhwehre(fc<f1)
-    freq = fc[fl:fh]
-    f_low = f_low[fl:fh]
-    f_high = f_high[fl:fh]
-    
-    #Use a butterworth filter on the data according to the fractional octave bands
-    nyq = 0.5*fs #nyquist frequency
-    low = f_low/nyq #low end of filter
-    high = f_high/nyq #high end of filter
-    #apply butterworth filter to data
-    b,a = butter(order,[low,high],btype='band')
-    filt_data = lfilter(b,a,data)
-     
-    return filt_data, freq
->>>>>>> origin/master
 
 def T60est(d,c = 1478,zw = 1.5e6,zi= 3.26e6):
     """
