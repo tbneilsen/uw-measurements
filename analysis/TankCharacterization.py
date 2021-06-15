@@ -15,7 +15,6 @@ of walls in tank from T60, Tank eigenmodes and Tank eigenfunctions
 """
 def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     """
-    This does not currently function correctly... it'll take some more time
     
     Parameters
     ----------
@@ -35,52 +34,83 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     Returns
     -------
     filt_data:  Ndarray;
-                Array of the bandpass filtered data
-    freq:       Ndarray of float;
+<<<<<<< HEAD
+                2-d array of the bandpass filtered data. Row dimensions = same dimensions as mid_bands. 
+                Each row is the data for a given band. The column dimensions are the filtered data.
+                Ex) filt_data[0,:] would be all of the data for the first mid-band frequency. 
+    mid_bands:  Ndarray of float;
                 Array of octave or fractional octave frequencies
     
 
     Notes
     -----
-    Author: Cameron Vongsawad
+    Author: Corey Dobbs
     
     Apply a bandpass filter to data in order to obtain an average over an 
     octave or fractional octave band centered at the middle frequencies output
     in freqs. 
     
+    References:
     https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
     
     https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
     
-    last modified 5/19/2021      
+    last modified 6/11/2021      
     """
     from scipy.signal import butter, lfilter
     import numpy as np
+    import math
     
     
     #Generate Frequency Array
-    """Need to actually do this according to ISO and example from github above
-    This is currently a cheap solution to not get yelled at too much. """
-    fc = np.array([250,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000])
-    #frequency array for low and high bounds of each bandwidth
-    f_low = np.array([224,447,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913])
-    f_high = np.array([282,562,708,891,1122,1413,1778,2239,2818,3548,4467,5623,7079,8913,11220])
-    #index frequencies according to center frequencies that fit within f0,f1 limits. 
-    fl = np.argwhere(fc>f0)
-    fh = np.arhwehre(fc<f1)
-    freq = fc[fl:fh]
-    f_low = f_low[fl:fh]
-    f_high = f_high[fl:fh]
+    G = 10**(3/10) #octave frequency ratio
+    fr = 1000     #reference frequency
+    
+    
+    # Get the initial mid-band frequency
+    #According to IEC standards
+    if frac % 2 != 0: #Odd frac
+        x_init = math.ceil(frac*np.log(f0/fr)/np.log(G))
+        x_final = math.floor(frac*np.log(f1/fr)/np.log(G))
+    else: #Even frac
+        x_init = math.ceil(frac*np.log(f0/fr)/np.log(G) - 1/2)
+        x_final = math.floor(frac*np.log(f0/fr)/np.log(G) - 1/2)
+    
+    x = np.arange(x_init,x_final + 1)
+    
+    
+    #Get mid-band frequencies and limits
+    if frac % 2 != 0: #Odd frac
+        mid_bands = fr*G**(x/frac)
+    else: #Even frac
+        mid_bands = fr*G**((2*x+1)/(2*frac))
+        
+    #Get frequency band limits
+    upper_limits = mid_bands*G**(1/(2*frac)) #low ends of filter
+    lower_limits = mid_bands/G**(1/(2*frac)) #high ends of filter
+    
     
     #Use a butterworth filter on the data according to the fractional octave bands
     nyq = 0.5*fs #nyquist frequency
-    low = f_low/nyq #low end of filter
-    high = f_high/nyq #high end of filter
+    
+   
     #apply butterworth filter to data
-    b,a = butter(order,[low,high],btype='band')
-    filt_data = lfilter(b,a,data)
-     
-    return filt_data, freq
+    for i in range(len(mid_bands)):
+        
+        
+        b,a = butter(order, [lower_limits[i]/nyq, upper_limits[i]/nyq], btype='band')
+        placeholder = lfilter(b,a,data)
+        
+        if i == 0:   #This initializes the filt_data array
+            filt_data = np.zeros((len(mid_bands),len(placeholder)))
+        
+        #Fill in filt_data with the butterworth filter
+        for j in range(len(placeholder)):
+            filt_data[i,j] = placeholder[j]
+
+    
+    return filt_data, mid_bands
+
 
 def T60est(d,c = 1478,zw = 1.5e6,zi= 3.26e6):
     """
@@ -309,9 +339,159 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     term3 = 0.00049*f**2*np.exp(-(T/27 + depth/17))
     alpha_prop = term1 + term2 + term3 
     return alpha_prop
+<<<<<<< HEAD
+=======
 
 
 
+
+def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
+    """
+    Calculate the T20, T30, or T60 from Backward Schroeder Integration on the 
+    measured impulse response hsys.
+    
+    Parameters
+    ----------
+    ht:         ndarray of float;
+                Measured Impulse Response of the environment. 
+    fs:         float;
+                Sampling frequency of the impulse reponse. 
+    t0:         int;
+                start time in seconds
+    t1:         int;
+                finish time in seconds 
+    d:          float, Optional;
+                depth of water. Defaults to a common 0.6m of water in the tank
+    c:          float, Optional;
+                speed of sound in water. Defaults to 1478 rounded to nearest whole
+                value for any depth of water the tank can have, using Garrett's eq.
+                for the speed of sound in water relative to temperature, depth, and 
+                salinity for a temparature of 19 degrees C (rough avg. in tank).
+    rt:         String, Optional;
+                Choose desired Reverb Time (rt) as T10, T20, T30, or T60. Defaults
+                to T60. Choosing less than T60 estimates the T60 by assuming linear
+                relationship between chosen rt and T60. 
+    plot:       boolian, Optional;
+                Defaults to False so as to not Plot the 10log(h(t)**2) and the 
+                associated Decay Curve. True would plot the two. 
+                
+>>>>>>> origin/master
+
+    Returns
+    -------
+    T60:        float;
+                Calculated reverberation time (T60) in the tank in seconds.
+                This is calculated using the Through The System (TTS) 
+                response to evaluate reverberation only in the tank. 
+                (i.e. time it takes for the signal in the tank to drop by 
+                60dB)
+    alpha_S:    float;
+                Estimated spatially averaged absorption coefficient for the
+                room based on the measured T60 and the Eyring Equation.  
+
+
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Calculate the measured T60 in the tank. 
+    
+    Some guidance for this part found here: 
+    https://github.com/python-acoustics/python-acoustics/blob/master/acoustics/room.py
+    the above link provides an alternate method to more generalize this solution 
+    
+    This also follows ISO3382-1:2009(E)
+    
+    last modified 5/18/2021      
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.pylab as pylab
+    from scipy import stats
+    params = {'legend.fontsize': 15,
+              'figure.figsize': (15, 10),
+             'axes.labelsize': 24,
+             'axes.titlesize':28,
+             'axes.titleweight':'bold',
+             'xtick.labelsize':'xx-large',
+             'ytick.labelsize':'xx-large',
+             'lines.linewidth':2}
+    pylab.rcParams.update(params)
+    
+    ##avoid log(0) to prevent exploding by clipping all zeros to 0.00001% of of the max
+    ## and go just beyond the max value so as to not clip. 
+    floor = np.max(ht)*1e-5 
+    ht1 = np.clip(ht,floor,(np.max(ht)+floor)) #data w/out zeros
+    
+    #Portion of array to actually look at for the T60meas. This is found by
+    #eyeing it (ISO3382-1:2009(E)). Look for just after the 10*np.log10(np.abs(ht)**2) 
+    #is flat in the beginning and just before it is flat in the end (background level).
+    t0 = int(t0*fs) #convert to samples
+    t1 = int(t1*fs) #convert to samples
+    ht1 = ht1[t0:t1] 
+
+    #Backward Schroeder Integration
+    T = 1/fs
+    schroeder = np.cumsum(ht1[::-1]**2)[::-1]*T
+    schroeder_dB = 10*np.log10(schroeder)  
+
+    if rt == 'T10':
+        #determine T30 between -5dB and -15dB of the max value of the decay curve
+        init = -5.0
+        end = -15.0
+        factor = 6.0 #amount to mult. T10 by to extrapolate T60
+    if rt == 'T20':
+        #determine T20 between -5dB and -25dB of the max value of the decay curve
+        init = -5.0
+        end = -25.0
+        factor = 3.0 #amount to mult. T20 by to extrapolate T60
+    if rt == 'T30':
+        #determine T30 between -5dB and -35dB of the max value of the decay curve
+        init = -5.0
+        end = -35.0
+        factor = 2.0 #amount to mult. T30 by to extrapolate T60
+    if rt == 'T60':
+        #determine T30 between -5dB and -35dB of the max value of the decay curve
+        init = -5.0
+        end = -65.0
+        factor = 1.0 #amount to mult. T30 by to extrapolate T60
+    
+    #Linear regression
+    #determine the value on the decay curve where it is nearest the init and end
+    #values below the maximum of the the decay curve
+    sch_init = schroeder_dB[np.abs(schroeder_dB - init).argmin()]
+    sch_end = schroeder_dB[np.abs(schroeder_dB - end).argmin()]
+    #indices of where the decay curve matches the init and end condition
+    init_sample = np.where(schroeder_dB == sch_init)[0][0]
+    end_sample = np.where(schroeder_dB == sch_end)[0][0]
+       
+    #Reverberation time (RT)
+    #convert samples to time and determine the difference
+    t_init = init_sample / fs
+    t_end = end_sample / fs
+    RT = t_end - t_init
+    T60 = factor*RT
+    print('T60 =',T60,'s') 
+    print('')
+    print('')
+    
+    
+    if plot == True:
+        t = np.linspace(0,len(ht1)/fs,len(ht1))
+        Level = 10*np.log10((np.abs(ht1))**2)
+        plt.figure()
+        #plot the IR**2 in dB
+        plt.plot(t,Level)
+        plt.xlabel('Time (s)')
+        plt.ylabel('Level (dB)')
+        plt.grid()
+        #plot Decay Curve
+        plt.plot(t,schroeder_dB)
+        plt.legend([r'$10log[h^{2}(t)]$','Decay Curve'])
+        est,_,_ = T60est(d,c)
+        plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms, T60est={np.around(est*1000,decimals=2)}ms')    
+    
+    return T60
 
 def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     """
@@ -356,7 +536,81 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
                 Estimated spatially averaged absorption coefficient for the
                 room based on the measured T60 and the Eyring Equation.  
 
+def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
+    """
+    Calculate the spatially averaged absorption coefficient of the walls of the
+    tank based on the measured T60 of the tank (either averaged or over freq)
+    
+    Parameters
+    ----------
+    T60:        float or array of float;
+                Calculated reverberation time (T60) in the tank in seconds.
+                This is calculated using the T60meas function.
+    d:          float, Optional;
+                depth of water. Defaults to a common 0.6m of water in the tank
+    c:          float, Optional;
+                speed of sound in water. Defaults to 1478 rounded to nearest whole
+                value for any depth of water the tank can have, using Garrett's eq.
+                for the speed of sound in water relative to temperature, depth, and 
+                salinity for a temparature of 19 degrees C (rough avg. in tank).
+    acc:        boolian, Optional;
+                Account for the assumption that the water-air boundary is perfectly
+                reflective. Defaults to False to not make this assumption and give
+                the overall spatially averaged absorption coefficient. If True, 
+                then the spatially averaged absorption coefficient that is returned
+                only accounts for the walls and the floor of the enclosure. 
+    anech:      boolian, Optional;
+                Defaults to False to calculate with no anechoic panels in the tank. 
+                If true, the calculation takes into account the thickness of the 
+                panels on the inner dimensions of the tank environment for the 
+                calculation of the spatially averaged absorption coefficient.
+    alpha_p:    float or ndarray of float, Optional;
+                Absorption coefficient due to thermoviscous molecular propagation
+                losses. Defaults as 0 such that there is no propagation absorption.
+                Can use alpha_prop(f,T,S,pH,depth) code to feed in an array of 
+                frequency dependent absorption coefficients due to propagation 
+                losses through the water. 
+                
+    Returns
+    -------
+    alpha_S:    float;
+                Estimated spatially averaged absorption coefficient for the
+                room based on the measured T60 and the Eyring Equation.  
+    
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Calculate the spatially averaged absorption coefficient of the tank boudaries
+    from the measured T60 in the tank. 
+    
+    
+    last modified 5/18/2021      
+    """
+    import numpy as np
+    #dimensions of tank
+    Lx = 1.22   #width of tank (m) 
+    Ly = 3.66   #length of tank (m)
+    #Alter the dimensions relative to the thickness of the anechoic panels
+    if anech == True:
+        Lx = Lx - 2*0.05
+        Ly = Ly - 2*0.05
+        print('Calculating absorption coeff. w/ respect to anechoic panels')
+    V = Lx*Ly*d #volume relative to current water depth
+    
+    if acc == True:
+        S = 2*(Ly*d+d*Lx)+Lx*Ly #total enclosed surface area minus air-water surface
+        print('Calculating absorption coeff. w/ respect to walls only')
+    else: 
+        S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
+        print('Calculating absorption coeff. w/ respect to water surface & walls')
+    #solving Eyring equation w/propagation loss found in 661 notes eq 4-2.4.124
+    #with default of alpha_p=0 this simplifies to eq. 4-2.4.116
+    alpha_S = 1-np.exp(V/S*(8*alpha_p - (24*np.log(10))/(c*T60)))
+    
+    return alpha_S
 
+<<<<<<< HEAD
     Notes
     -----
     Author: Cameron Vongsawad
@@ -536,6 +790,8 @@ def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
     
     return alpha_S
 
+=======
+>>>>>>> origin/master
 
 def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478):
     """
