@@ -40,7 +40,7 @@ def gatefunc(IR,fs,tgate,tb4=0.0001):
     very close to the initial signal considering fs.
     
     
-    Last Modified: 4/1/2021
+    Last Modified: 6/1/2021
     """
     
     """Might be good to look into constant fraction descrimination to find 
@@ -54,7 +54,7 @@ def gatefunc(IR,fs,tgate,tb4=0.0001):
     IRgate = np.zeros(len(IR))
     IRgate[start:fin] = IR[start:fin] #replace up to gate with original
     tbuff = tb4/2 #buffer value to determine where to apply the hanning window.
-    damp = int(tbuff * fs) #0.05ms of damping converted to samples
+    damp = int(tbuff * fs) #converted to samples
     #apply hanning window to portion of the array following original cutoff
     #this allows for the signal to more gradually ramp down to zeros. 
     IRgate[fin:fin+damp] = IR[fin:fin+damp]*np.hanning(damp)
