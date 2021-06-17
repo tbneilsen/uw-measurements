@@ -1,4 +1,4 @@
-function TRAD = TRAD_func(fss,Xss,probe_config,rho,c)
+givefunction TRAD = TRAD_func(fss,Xss,probe_config,rho,c)
 %{
 This function uses the traditional method to calculate estimated intensity
 vectors from multi-microphone intensity probes given single-sided ffts
