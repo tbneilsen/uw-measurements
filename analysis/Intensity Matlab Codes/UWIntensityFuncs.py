@@ -7,7 +7,7 @@ Created on Mon Jun 14 10:47:13 2021
 import numpy as np
 import scipy as sci
 import sys
-sys.path.append("path to byu arg lib")
+sys.path.append("D:/uw-acoustics-research/uw-meas-codes/byuarglib/")
 import byuarglib as byu
 
 def computeBlockFFT(data, ns, w, W):
@@ -68,7 +68,7 @@ def computeBlockFFT(data, ns, w, W):
     return Xss, num_Blocks 
     
     
-def TRAD_func(fss, Xss, probe_config, rho=997, c=1478):
+def TRAD_func(fss, Xss, probe_config, rho=1023, c=1478):
     """
     This function uses the traditional method to calculate
     estimated intensity vectors from multi-microphone intensity
@@ -93,7 +93,7 @@ def TRAD_func(fss, Xss, probe_config, rho=997, c=1478):
         it would have the coordinates (0,0,0)
     rho : float
         Density of medium
-        Defaults to water. 997 kg/m**3
+        Defaults to water. 1023 kg/m**3
     c : float
         Speed of sound in medium. 
         Defaults to 1478 m/s in water 
@@ -112,15 +112,30 @@ def TRAD_func(fss, Xss, probe_config, rho=997, c=1478):
         Total energy density (T + U)
     EL : TYPE
         Lagrangian energy density (T - U)
-
+    I_mag : TYPE
+        
+    I_dir : TYPE
+    
+    Q_mag : TYPE
+    
+    Q_dir : TYPE
+    
+    p0 : TYPE
+    
+    grad_p : TYPE
+    
+    u : TYPE
+    
+    z : array
+        Specific acoustic impedance (p0/u)
+        
     Author: Corey Dobbs
     Transcripted from TRAD_func.m in 
     BYU_Acoustics/Energy-based_Acoustics_Page in
     git.physics.byu.edu
     
-    Last modified: 6/15/21
+    Last modified: 6/18/21
     """
-    
     omega = 2*np.pi*fss
     
     size_fft = np.shape(Xss)
@@ -165,8 +180,85 @@ def TRAD_func(fss, Xss, probe_config, rho=997, c=1478):
         grad_p = pInvX*pdiff
             
         #Calculate p0
-        centerCH = probe_config.index(0)
-    return I, Q, U, T, E, EL
-
-
+        centerCH = np.where(probe_config == [0,0,0])
+        if len(centerCH) == 1:
+            #If there is a microphone at the center of the probe
+            p0 = p[centerCH,:] #Complex p0
+            P0 = abs(p0) #Abs p0
+        else:
+            #If there is NOT a microphone at the center of the probe
+            p0 = np.mean(p,1) #Complex p0
+            P0 = np.mean(abs(p0)) #Abs p0
+        
+        
+        #The function np.tile repeats omega and p0 across x, y and z so they can
+        #be multiplied by grad_p element-wise in the intensity calculation.
+        omega_vec = np.tile(omega,3,1)
+        p0_vec = np.tile(p0,3,1)
+        
+        #Intensity for the current block
+        Ic = np.conj(1j/(omega_vec*rho))*p0_vec #Complex intensity
+        u = 1j/(omega_vec*rho)*grad_p #Particle velocity
+        
+        I_blocks[i,:,:] = np.real(Ic) #Real part of intensity
+        Q_blocks[i,:,:] = np.imag(Ic) #Imaginary part of intensity
+        
+        usq_blocks[i,:,:] = abs(u)**2 
+        psq_blocks[i,:,:] = P0**2
     
+    #Average intensities across blocks
+    I = np.squeeze(np.mean(I_blocks,0))
+    Q = np.squeeze(np.mean(Q_blocks,0))
+     
+    #Calculate energy densities
+    psq = np.mean(psq_blocks,0)
+    usq = np.squeeze(np.mean(usq_blocks,0))
+    U = psq/(2*rho*c**2)
+    T_vec = rho/2*usq
+    T = np.sum(T_vec,0)
+    E = T + U
+    EL = T - U  
+    
+    #Find magnitude of intensity vector
+    I_mag = np.squeeze(np.sqrt(np.real(I[0,:])**2 + np.real(I[1,:])**2 + np.real(I[2,:])**2))
+    Q_mag = np.squeeze(np.sqrt(np.real(Q[0,:])**2 + np.real(Q[1,:])**2 + np.real(I[2,:])**2))
+    
+    #Find the angle (in radians) of the intensity vector (in x-y plane)
+    Ix = I[0,:]
+    Iy = I[1,:]
+    I_dir = np.arctan(Iy,Ix)
+    Qx = Q[0,:]
+    Qy = Q[1,:]
+    Q_dir = np.arctan(Qy,Qx)
+    
+    z = np.tile(p0,3,1)/u
+    
+    return I, Q, U, T, E, EL, I_mag, I_dir, Q_mag, Q_dir, p0, grad_p, u, z
+
+def calcIntensity(fs, L, mic_Dist, filepath, ID_num, c = 1478, rho = 1023, I_ref = 6.61e-19, P_ref = 1e-6):
+    
+    
+    
+    ns =  L*fs #number of samples
+    df = fs/ns #sample spacing in frequency domain
+    fss = np.arange(0,(fs/2-df),df) #single-sided frequency array
+    
+    #window and weighting functions
+    w = np.hanning(ns)
+    W = np.mean(w*np.conj(w)) #used to scale the ASD for energy conservation
+    
+    # Load in data, make sure binfileload.m is downloaded from byuarg library.
+    #This is also a good place to account for the amplification factor from 
+    #the NEXUS conditioning amplifier (in this case divide by 10 to account 
+    #for the 10 mV/Pa amplification).
+    x1 = byu.binfileload(filepath,'ID',ID_num,0)/10
+    x2 = byu.binfileload(filepath,'ID',ID_num,1)/10
+    
+    Xss1, num_Blocks = computeBlockFFT(x1,ns,w,W)
+    Xss2, num_Blocks = computeBlockFFT(x2,ns,w,W)
+    
+    Xss = np.concatenate(np.reshape(Xss1,[1,np.size(Xss1,0),np.size(Xss1,1)]),np.reshape(Xss2,[1,np.size(Xss1,0),np.size(Xss1,1)])) 
+    
+    probe_config = np.array([0,.12,0],[0,-.12,0])
+        
+    I, Q, U, T, E, EL, I_mag, I_dir, Q_mag, Q_dir, p0, grad_p, u, z = TRAD_func(fss,Xss,probe_config)
