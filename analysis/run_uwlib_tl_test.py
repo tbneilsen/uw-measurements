@@ -65,7 +65,7 @@ def main():
     # ["svp.gsl.no_shear.toml", "svp.gsl.toml"]
     test_env_files = ["svp_tank.toml"]
 
-    freqs = np.linspace(1000.0,10000.0,1000)
+    freqs = np.linspace(1000.0,10000.0,100)
 
     for testfile in test_env_files:
         full_file = os.path.join(SVP_FOLDER, testfile)
