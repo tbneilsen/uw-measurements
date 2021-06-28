@@ -1,4 +1,4 @@
-givefunction TRAD = TRAD_func(fss,Xss,probe_config,rho,c)
+function TRAD = TRAD_func(fss,Xss,probe_config,rho,c)
 %{
 This function uses the traditional method to calculate estimated intensity
 vectors from multi-microphone intensity probes given single-sided ffts
@@ -44,13 +44,13 @@ EL - Lagrangian energy density (Ek - Ep)
 %}
 
 
-if nargin < 4
-    rho = 1.21;
-end
+%if nargin < 4
+%    rho = 1.21;
+%end
 
-if nargin < 5
-    c = 343;
-end
+%if nargin < 5
+%    c = 343;
+%end
 
 omega = 2*pi.*fss;
 
