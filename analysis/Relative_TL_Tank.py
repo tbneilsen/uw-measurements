@@ -78,6 +78,3 @@ N = fs*(leading_and_trailing+signal_duration)
 _, _, _, ch0, rec_sig, _, _ = ESAUdata(path3,desire,channel,N)
 
 Range, rel_TL = calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end,fs,signal_duration,leading_and_trailing,step,c)
-
-print(Range)
-print(rel_TL)
