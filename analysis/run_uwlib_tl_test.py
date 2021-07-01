@@ -184,7 +184,7 @@ def main():
         plt.savefig(os.path.join( SAVE_FOLDER, save_name[i]))
         # print(kn[0,0].real*ranges[0])
         '''
-        ORCA_dict = {'frequency':freqs,'transmission loss':tl}
+        ORCA_dict = {'frequency':freqs,'transmission loss':tl,'ranges':ranges}
         filename = 'ORCA_TL'
         outfile = open(filename,'wb')
         pickle.dump(ORCA_dict,outfile)
