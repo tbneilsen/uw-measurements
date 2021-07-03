@@ -19,7 +19,7 @@ svp_title = "svp_tank"
 cp = 343.0
 cs = 0.0
 # density
-rho = 0.00121
+rho = 0.001225  # let's find a more accurate value for this: https://en.wikipedia.org/wiki/Density_of_air
 # attenuation
 ap = 0.0
 as = 0.0
@@ -59,7 +59,7 @@ ap = 0
 
 layers = [
     [0.0, 1478.0],
-    [0.209, 1478.0]
+    [0.242, 1478.0]
 ]
 
 
@@ -94,19 +94,19 @@ ap2 = 0.128  # dB/(m*kHz)
 as1 = 0
 as2 = 0
 
-# [[layer_profiles]]
-# type = "linear"
-# h =  10.0
-# cp1 =  3450.0
-# cp2 =  3450.0
-# cs1 =  0.0
-# cs2 =  0.0
-# rho1 =  2.3
-# rho2 =  2.3
-# ap1 =  0.1
-# ap2 =  0.15
-# as1 =  0.0
-# as2 =  0.0
+[[layer_profiles]]
+type = "linear"
+h =  0.255
+cp1 =  343.0
+cp2 =  343.0
+cs1 =  0.0
+cs2 =  0.0
+rho1 =  0.001225 # find more accurate value : https://en.wikipedia.org/wiki/Density_of_air
+rho2 =  0.001225 
+ap1 =  0.164 # from wikipedia: https://en.wikipedia.org/wiki/Attenuation
+ap2 =  0.164
+as1 =  0.0
+as2 =  0.0
 
 # -------
 # SECTION 7: Lower Halfspace
