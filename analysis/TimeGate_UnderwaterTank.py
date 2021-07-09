@@ -13,9 +13,6 @@ Created on Thu Jan 30 15:23:48 2020
 #*****************************************************************************#
 ###############################################################################
 
-<<<<<<< Updated upstream
-def timegateTank(AEgir_pose, Ran_pose, D=0.2,T=16.0,S=0.03, Coordinate='tank'):
-=======
 def gatefunc(IR,fs,tgate,tb4=0.1):
     """
     Compute the Sound Speed of the Water based on the Depth, Temperature, and 
@@ -29,7 +26,7 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
     fs:     float;
             Sampling frequency of the input time domain signal. Measured in Hz.
     tgate:  float;
-            Amoung of time in seconds from the beginning of the input IR signal
+            Amount of time in seconds from the beginning of the input IR signal
             in which the reflection of interest is arriving that needs to be
             timegated out of the signal.
     tb4:    float, optional;
@@ -116,8 +113,7 @@ def uwsoundspeed(D=0.2,T=16.0,S=0.03,model='Garrett'):
     return c
 
 
-def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
->>>>>>> Stashed changes
+def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank',Print='True'):
     import numpy as np
     """
     Compute the first bounce reverberations of the BYU Hydroacoustics lab tank
@@ -134,15 +130,13 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
     #Water Characteristics in the Tank#
     D:  float, optional;
         water depth (m) where 0<= D <=1000m
-    T:  float, optional;
-        temperature in Celcius where -2<= T <=24.5 
-    S:  float, optional;
-        salinity where 0.030<= S <=0.042 grams salt per kg H20
     
     Coordinate: string, optional;
                 Choose if cordinate system is robot frame or tank frame
                 Standard is tank frame "tank"
                 or robot frame inputing each robot + vention positioning "robot" 
+    Print: string, optional;
+                Choose if you want the function to print a bunch of numbers
 
 
     Returns
@@ -154,8 +148,6 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
             but still allowing potential for seabed and surface reflections.
     directpath: float;
                 distance of direct path from hydrophone to hydrophone
-    c:  float;
-        speed of sound in water for the specified depth, temperature and salinity
     
     prints values of: 
         AEgir and Ran positions
@@ -179,14 +171,7 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
     
     
     Times printed in "ms" (milliseconds), however programmed values in seconds
-    """  
-    ###############################################################################
-    ######## sound speed (m/s), Cite Garrett valid w/in +-0.2m/s ##################
-    ###### appears to be accurate w/in 0.000969% of wiki value @20C ###############
-    ########## effects of depth is negligible in the tank limits ##################
-    ###############################################################################
-    c = 1493 + 3*(T-10) - 0.006*(T-10)**2 - 0.04*(T-18)**2 + 1.2*(S-35)- 0.01*(T-18)*(S-35) + D/61
-        
+    """          
         ###############################################################################
         ################### function to determine time of flight for ##################
         ############## ray paths knowing tank fram positions ##########################
@@ -265,22 +250,23 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         tshort = min(t)
         tside = (ts1,ts2,tfront,tback)
         tside = min(tside)
-        print('')
-        print('AEgir(source) & Ran(Receiver) tank frame coordinates:')
-        print('(XA,YA,ZA)=',(XA,YA,ZA))
-        print('(XR,YR,ZR)=',(XR,YR,ZR))
-        print('')
-        print('Single Bounce reverberation times to receiver:')
-        print('direct sound t=', tdirect*10**3,'ms')
-        print('bottom bounce t=', tb*10**3,'ms')
-        print('H20-O2 bounce t=', tt*10**3,'ms')
-        print('Side 1 bounce t=', ts1*10**3,'ms')
-        print('Side 2 bounce t=', ts2*10**3,'ms')
-        print('Front Wall bounce t=', tfront*10**3,'ms')
-        print('Back Wall bounce t=', tback*10**3,'ms')
-        print('tshort=',tshort,'s')
-        print('')
-        return tshort,tside,directpath     
+        if Print:
+            print('')
+            print('AEgir(source) & Ran(Receiver) tank frame coordinates:')
+            print('(XA,YA,ZA)=',(XA,YA,ZA))
+            print('(XR,YR,ZR)=',(XR,YR,ZR))
+            print('')
+            print('Single Bounce reverberation times to receiver:')
+            print('direct sound t=', tdirect*10**3,'ms')
+            print('bottom bounce t=', tb*10**3,'ms')
+            print('H20-O2 bounce t=', tt*10**3,'ms')
+            print('Side 1 bounce t=', ts1*10**3,'ms')
+            print('Side 2 bounce t=', ts2*10**3,'ms')
+            print('Front Wall bounce t=', tfront*10**3,'ms')
+            print('Back Wall bounce t=', tback*10**3,'ms')
+            print('tshort=',tshort,'s')
+            print('')
+        return tshort,tside,tdirect,directpath     
         
               
         #### for tank frame coordinates, no need to translate coordinates #############
@@ -297,7 +283,7 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         YR   = Ran_pose[1]            
         ZR   = Ran_pose[2]
         
-        tshort,tside,directpath = pathtime(XA,YA,ZA,XR,YR,ZR)
+        tshort,tside,tdirect,directpath = pathtime(XA,YA,ZA,XR,YR,ZR)
     
         
         #### for robot frame coordinates, must translate to tank frame first ##########
@@ -362,4 +348,4 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank'):
         
         tshort,tside = pathtime(XA,YA,ZA,XR,YR,ZR)
 
-    return tshort,tside,directpath,c
+    return tshort,tside,tdirect,directpath
