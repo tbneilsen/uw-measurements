@@ -41,7 +41,7 @@ def calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end):
         Based on: OASPLcalc.m by Kent Gee
         """
         # square the pressure array
-        pref = 1e-6 # Pascals
+        pref = 12.34684596708469078406978 # Pascals
         #x = np.square(x)
         #OASPL = 10 * np.log10(np.mean(x)/pref**2)
         OASPL = 10 * np.log10(np.var(x)/pref**2)
@@ -72,6 +72,8 @@ path3 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2
 #path3 = 'D:/2021-05-20_scan2' # 100 kHz, 100 points
 path4 = 'D:/2021-05-20_scan3' # 50 kHz, 100 points
 path5 = 'D:/2021-05-25_scan1' # 100 kHz, 100 points, Ran is on whole time
+path6 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan' # 100 kHz, 100 points, signal on longer
+path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan1' # 100 kHz, 100 points, signal on longer, longer settling time
 desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
@@ -82,18 +84,22 @@ step = 1.0/99.0
 #rec_end = 500600 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
 
 
-_,_,_,fs,signal_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path3)
-A, R, dd = ESAUpose(path3,desire)
+_,_,_,fs,signal_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path7)
+A, R, dd = ESAUpose(path7,desire)
 tshort = np.zeros(len(desire))
 tside = np.zeros(len(desire))
 tdirect = np.zeros(len(desire))
 for i in desire:
     tshort[i],tside[i],tdirect[i],_ = TG.gateValue(A[i], R[i], depth, c, 'tank',False)
-leading = 0.5
-trailing = 0.5
+
+leading = 0.05
+trailing = 0.05
 leading_and_trailing = leading + trailing
+
 N = int(fs*(leading_and_trailing+signal_duration))
-_, _, _, ch0, rec_sig, _, _ = ESAUdata(path3,desire,channel,N)
+
+_, _, _, ch0, rec_sig, _, _ = ESAUdata(path7,desire,channel,N)
+
 gated_rec_sig = np.zeros((N,len(desire)))
 for i in desire:
     gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,leading + tside[i], 0.1)
@@ -110,12 +116,15 @@ rec_end = rec_end.astype('int')
 
 t = np.linspace(0,(N-1)/fs,N)
 
+
+'''
 for i in desire:
     plt.figure()
     plt.plot(t[rec_start[i]:rec_end[i]],gated_rec_sig[rec_start[i]:rec_end[i],i], label = str(np.round(dd[i],4)) + ' m')
     plt.ylim(-2.5,2.5)
     plt.legend()
     plt.show()
+'''
 
 rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
 plt.figure()
