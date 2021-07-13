@@ -173,13 +173,12 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank',Print='True'):
     Author: Cameron Vongsawad
     
     This code only allows for a single tuple of length len(A)=3 and len(R)=3 or 4
+    Times printed in "ms" (milliseconds), however returned values in seconds
+
+    Last Modified: 6/1/2021
     
+    """  
     
-    Last Modified: 11/17/2020
-    
-    
-    Times printed in "ms" (milliseconds), however programmed values in seconds
-    """          
         ###############################################################################
         ################### function to determine time of flight for ##################
         ############## ray paths knowing tank fram positions ##########################
