@@ -66,47 +66,34 @@ import numpy as np
 import sys
 sys.path.append('/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20')
 
-path1 = 'D:/2021-05-18_scan6' # 100 kHz, 10 points
-path2 = 'D:/2021-05-18_scan7' # 100 kHz, 10 points
 path3 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan2' # 100 kHz, 100 points
-#path3 = 'D:/2021-05-20_scan2' # 100 kHz, 100 points
-path4 = 'D:/2021-05-20_scan3' # 50 kHz, 100 points
-path5 = 'D:/2021-05-25_scan1' # 100 kHz, 100 points, Ran is on whole time
+path4 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan3' # 50 kHz, 100 points
+path5 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-25_scan1' # 100 kHz, 100 points, Ran is on whole time
 path6 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan' # 100 kHz, 100 points, signal on longer
 path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan1' # 100 kHz, 100 points, signal on longer, longer settling time
+path_used = path7
 desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
-step = 1.0/99.0
-#rec_start = 500190 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
-#rec_end = 501000 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
-#rec_start = 500190 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
-#rec_end = 500600 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
 
 
-_,_,_,fs,signal_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path7)
-A, R, dd = ESAUpose(path7,desire)
+_,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
+A, R, dd = ESAUpose(path_used,desire)
 tshort = np.zeros(len(desire))
 tside = np.zeros(len(desire))
 tdirect = np.zeros(len(desire))
 for i in desire:
     tshort[i],tside[i],tdirect[i],_ = TG.gateValue(A[i], R[i], depth, c, 'tank',False)
 
-leading = 0.05
-trailing = 0.05
-leading_and_trailing = leading + trailing
+N = int(fs*measurement_duration)
 
-N = int(fs*(leading_and_trailing+signal_duration))
-
-_, _, _, ch0, rec_sig, _, _ = ESAUdata(path7,desire,channel,N)
+_, _, _, _, rec_sig, _, _ = ESAUdata(path_used,desire,channel,N)
 
 gated_rec_sig = np.zeros((N,len(desire)))
 for i in desire:
     gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,leading + tside[i], 0.1)
 
 import matplotlib.pyplot as plt
-
-shiftval = (step/c)*fs
 
 rec_start = fs*(tdirect + leading)
 rec_end = fs*(tside + leading)
