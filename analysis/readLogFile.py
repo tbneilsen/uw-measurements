@@ -38,8 +38,14 @@ def readLogFile(filename,location):
         Temperature of the water at the time of measurement (degrees Celsius)
     fs : Float
         Sampling frequency of measurement (Hz)
+    leadingZeros : Float
+        leading zeros before the measurement starts (s)
     signalDuration : Float
         Length of signal (s)
+    trailingZeros : Float
+        trailing zeros after the signal has been sent (s)
+    measurementDuration : Float
+        Length of Measurement (s)
     hWater : Float
         Height/depth of water in tank at time of measurement, measured in meters
         from the bottom of the tank
