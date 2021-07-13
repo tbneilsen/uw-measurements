@@ -13,11 +13,17 @@ Created on Thu Jan 30 15:23:48 2020
 #*****************************************************************************#
 ###############################################################################
 
-def gatefunc(IR,fs,tgate,tb4=0.1):
+def gatefunc(IR,fs,tgate,leading=0.0,tb4=0.1):
     """
-    Compute the Sound Speed of the Water based on the Depth, Temperature, and 
-    Salinity of the water according to three well known models. Garrett, Medwin 
-    & Kuperman or Wilson. 
+    This function takes a signal and gates out undesired signal. At time
+    "tgate" - "tb4" a hanning window will be applied that rapidly decays to zero.
+    Any signal afterwards will be replaced with zeros. If leading zeros are
+    input as "leading", then all those leading zeros will be replaced with 
+    actual zeros instead of noise. If the noise needs to be kept, then you must add the
+    leading zeros to tgate before inputing it into the function and set
+    "leading" equal to 0.0. If you have leading zeros in your signal you
+    need to either add them to "tgate" or input them into "leading" or else
+    this function will not work.
     
     Parameters
     ----------
@@ -25,6 +31,8 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
             Impulse Response or time domain signal. 
     fs:     float;
             Sampling frequency of the input time domain signal. Measured in Hz.
+    leading:float, optional;
+            The leading zeros before the signal starts. Deaults to 0.0.
     tgate:  float;
             Amount of time in seconds from the beginning of the input IR signal
             in which the reflection of interest is arriving that needs to be
@@ -48,8 +56,8 @@ def gatefunc(IR,fs,tgate,tb4=0.1):
     import numpy as np
     Nb4 = tb4/1000 *fs #convert to seconds and then samples before gating
     #where to start the time-gating or cutting off the signal to zero
-    fin = int(tgate*fs-Nb4) 
-    start = 0 #start the time gating allowing everything from the beginning of ht
+    start = int(leading*fs) #start the time gating allowing everything from the beginning of ht
+    fin = start + int(tgate*fs-Nb4)
     #convert time length to samples to determine the finish cutoff of ht
     #fin = int(tgate*fs*percent)
     #cut off the IR before the first reflection being index "fin"

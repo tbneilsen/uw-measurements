@@ -17,6 +17,8 @@ import uwlib
 from uwlib.orca import ORCA
 from ESAUdata import ESAUdata
 from readLogFile import readLogFile
+from ESAUpose import ESAUpose
+import TimeGate_UnderwaterTank as TG
 
 import sys
 #sys.path.append('/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20')
@@ -25,25 +27,48 @@ sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/pyth
 from autospec import autospec
 from freq_vs_rel_TL_using_autospec import freqVsRelTLwithAutospec
 
-path2 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan2' # 100 kHz, 100 points
-path3 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan3' # 50 kHz, 100 points
-path4 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan4' # 10 kHz, 100 points
+path3 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan2' # 100 kHz, 100 points
+path4 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-20_scan3' # 50 kHz, 100 points
+path5 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2021-05-25_scan1' # 100 kHz, 100 points, Ran is on whole time
 
-path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24/2021-06-24_scan7' # 1 - 10 kHz linear chirp, 11 points 
-path = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24B/2021-06-24_scan' # 10 - 100 kHz linear chirp, 11 points
-desire = [i for i in range(11)]
+path6 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan' # 100 kHz, 100 points, signal on longer
+path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan1' # 100 kHz, 100 points, signal on longer, longer settling time
+
+path8 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24/2021-06-24_scan7' # 1 - 10 kHz linear chirp, 11 points 
+path9 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24B/2021-06-24_scan' # 10 - 100 kHz linear chirp, 11 points
+path_used = path7
+desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
-step = 1.0/99.0
-rec_start = 500190 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
-rec_end = 500600 # a value chosen by observing the graphs. Need to find a more accurate way of getting this.
 
-_,_,_,fs,signal_duration,_,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path)
-leading_and_trailing = 0.15
-N = int(fs*(leading_and_trailing+signal_duration))
-_, _, _, _, ch1, _, _ = ESAUdata(path,desire,channel,N)
+_,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
+A, R, dd = ESAUpose(path_used,desire)
+'''
+acoustic_center_offset = 0.0092
+dd = dd + 2*acoustic_center_offset
+for i in desire:
+    A[i] = list(A[i])
+    R[i] = list(R[i])
+    A[i][1] = A[i][1] + acoustic_center_offset
+    R[i][1] = R[i][1] - acoustic_center_offset
+    A[i] = tuple(A[i])
+    R[i] = tuple(R[i])
+    '''
+tshort = np.zeros(len(desire))
+tside = np.zeros(len(desire))
+tdirect = np.zeros(len(desire))
+for i in desire:
+    tshort[i],tside[i],tdirect[i],_ = TG.gateValue(A[i], R[i], depth, c, 'tank',False)
 
+N = int(fs*measurement_duration)
 
+_, _, _, _, rec_sig, _, _ = ESAUdata(path_used,desire,channel,N)
+
+gated_rec_sig = np.zeros((N,len(desire)))
+for i in desire:
+    gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,tside[i],leading,0.1)
+
+'''
 ns = 2**15
 unitflag = 0
 pref = 1e-6
@@ -60,21 +85,27 @@ rel_Gxx_level, freq_band = freqVsRelTLwithAutospec(Gxx,f,start_freq,end_freq)
 '''
 from Relative_TL_Tank import calcRelativeTransmissionLoss
 
-Range, rel_TL = calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end,fs,signal_duration,leading_and_trailing,step,c)
-'''
+rec_start = fs*(tdirect + leading)
+rec_end = fs*(tside + leading)
+
+rec_start = rec_start.astype('int')
+rec_end = rec_end.astype('int')
+
+rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
+
 SHOW_PLOTS = False
 SAVE_PLOTS = True
 
 logger = logging.getLogger(__name__)
 
 SVP_FOLDER = "orcafiles"
-SAVE_FOLDER = "defaultoutput/2021-06"
+SAVE_FOLDER = "defaultoutput/2021-07"
 
 # Plot TL for differenet frequencies vs which parameter?
 
 plot_relative_tl = True # this is relative to the first point in the array
-freq_vs_TL = True
-range_vs_TL = False
+freq_vs_TL = False
+range_vs_TL = True
 depth_vs_TL = False
 
 
@@ -92,9 +123,9 @@ def main():
 
     max_modes = 1000
 
-    test_env_files = ["svp_tank_0.209m.toml"]
+    test_env_files = ["svp_tank_0.191m.toml"]
 
-    freqs = freq_band
+    freqs = [100000.0]
 
     for testfile in test_env_files:
         full_file = os.path.join(SVP_FOLDER, testfile)
@@ -104,17 +135,17 @@ def main():
         # pdb.set_trace()
 
         # set transmission loss source depth (in m)
-        src_depth = [0.099]#np.linspace(0.05, 5.0, 512)  # 1.0
+        src_depth = [0.0955]#np.linspace(0.05, 5.0, 512)  # 1.0
 
         # set receiver depth(s) in m
-        rec_depth = [0.099] #[2.0,3.0, 3.5]#np.array([1.0, 2.0])
+        rec_depth = [0.0955] #[2.0,3.0, 3.5]#np.array([1.0, 2.0])
 
         # set depths at which mode functions should be defined
         # orca gets confused if the exact same number is in both src_depth and rec_depth
         mode_depth = np.append(src_depth, rec_depth)
 
         # set ranges in m
-        ranges = np.linspace(0.1, 1.1, 11) # [9.0]
+        ranges = dd #np.linspace(0.1, 1.1, 11) # [9.0]
 
         # set the source depth for the tl calculation
         logger.info("ORCA is set up and ready to go")
@@ -176,7 +207,7 @@ def main():
                     plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])),\
                          label = "calc TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
                     # this is where you can plot actual data over the calculated tl
-                    plt.plot(Range,rel_TL, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
+                    plt.plot(ranges,rel_TL, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
                     plt.ylabel("TL, dB re 0.1 m") # change re depending on what it's to
                     plt.title('Range vs Relative Transmission Loss\

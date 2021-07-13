@@ -79,6 +79,17 @@ c = 1478
 
 _,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
 A, R, dd = ESAUpose(path_used,desire)
+'''
+acoustic_center_offset = 0.0092
+dd = dd + 2*acoustic_center_offset
+for i in desire:
+    A[i] = list(A[i])
+    R[i] = list(R[i])
+    A[i][1] = A[i][1] + acoustic_center_offset
+    R[i][1] = R[i][1] - acoustic_center_offset
+    A[i] = tuple(A[i])
+    R[i] = tuple(R[i])
+'''
 tshort = np.zeros(len(desire))
 tside = np.zeros(len(desire))
 tdirect = np.zeros(len(desire))
@@ -91,7 +102,7 @@ _, _, _, _, rec_sig, _, _ = ESAUdata(path_used,desire,channel,N)
 
 gated_rec_sig = np.zeros((N,len(desire)))
 for i in desire:
-    gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,leading + tside[i], 0.1)
+    gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,tside[i],leading,0.1)
 
 import matplotlib.pyplot as plt
 
@@ -105,17 +116,17 @@ t = np.linspace(0,(N-1)/fs,N)
 
 
 '''
-for i in desire:
-    plt.figure()
-    plt.plot(t[rec_start[i]:rec_end[i]],gated_rec_sig[rec_start[i]:rec_end[i],i], label = str(np.round(dd[i],4)) + ' m')
-    plt.ylim(-2.5,2.5)
-    plt.legend()
-    plt.show()
-'''
+#for i in desire:
+plt.figure()
+plt.plot(t[rec_start[0]:rec_end[0]],gated_rec_sig[rec_start[0]:rec_end[0],0], label = str(np.round(dd[0],4)) + ' m')
+plt.ylim(-3,3)
+plt.legend()
+plt.show()
+
 
 rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
 plt.figure()
 plt.plot(dd,rel_TL)
 plt.show()
-
+'''
 # %%
