@@ -16,10 +16,10 @@ Created on Thu Jan 30 15:23:48 2020
 def gatefunc(IR,fs,tgate,leading=0.0,tb4=0.1):
     """
     This function takes a signal and gates out undesired signal. At time
-    "tgate" - "tb4" a hanning window will be applied that rapidly decays to zero.
-    Any signal afterwards will be replaced with zeros. If leading zeros are
-    input as "leading", then all those leading zeros will be replaced with 
-    actual zeros instead of noise. If the noise needs to be kept, then you must add the
+    "tgate" - "tb4" a hanning window will be applied that rapidly decays to 
+    zero.Any signal afterwards will be replaced with zeros. If leading zeros are
+    input, then all those leading zeros will be replaced with actual zeros instead
+    of noise. If the noise needs to be kept, then you must add the
     leading zeros to tgate before inputing it into the function and set
     "leading" equal to 0.0. If you have leading zeros in your signal you
     need to either add them to "tgate" or input them into "leading" or else
