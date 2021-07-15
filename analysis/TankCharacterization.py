@@ -895,6 +895,7 @@ def P_model_Pierce(Psi0,Psi,k,kn,mode,alpha,d=0.6,A=1,acc=False,anech=False,alph
         S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
         print('Calculating w/ respect to water surface & walls')
     #Spatially averaged absorption area including propagation absorption 
+    alpha_wall = alpha #wall absorption/impedance accounted for
     As = S*alpha_wall + 8*alpha_p*V 
     x,y,z = mode[0],mode[1],mode[2]
     if x == 0:
