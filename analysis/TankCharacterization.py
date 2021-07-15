@@ -13,7 +13,7 @@ of walls in tank from T60, Tank eigenmodes and Tank eigenfunctions
 
 @author: cvongsaw
 """
-def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
+def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     """
     
     Parameters
@@ -27,18 +27,27 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     fs:         float;
                 Sampling frequency of the data
     frac:       float, Optional;
-                Bandwidth 'b'. Examples: 1/3-octabe b=3, 1-octave b=1 (Default), 
-                2/3-octave b=3/2.
+                Bandwidth fraction. Examples: 1/3-octave frac=3, 1-octave frac=1 (Default), 
+                2/3-octave frac=3/2.
     order:      Int, Optional;
                 Order of the filter. Defaults to 5. 
+    exact:      boolean;
+                Gives option to use IEC standard for octave ratio (10**(3/10))
+                or generally accepted standard of 2. Default is True. Set exact
+                to False if factor of 2 is desired. 
+    
     Returns
     -------
     filt_data:  Ndarray;
                 2-d array of the bandpass filtered data. Row dimensions = same dimensions as mid_bands. 
                 Each row is the data for a given band. The column dimensions are the filtered data.
                 Ex) filt_data[0,:] would be all of the data for the first mid-band frequency. 
+                
     mid_bands:  Ndarray of float;
                 Array of octave or fractional octave frequencies
+                Note: center frequencies are based on IEC standard 61260-1
+                found in equation 1 in section 5.2.1. This code defaults to the 
+                octave ratio 10**(3/10) as opposed to the standard ratio of 2. 
     
 
     Notes
@@ -47,27 +56,42 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
     
     Apply a bandpass filter to data in order to obtain an average over an 
     octave or fractional octave band centered at the middle frequencies output
-    in freqs. 
+    in mid_bands. 
     
     References:
     https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
     
     https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
     
-    last modified 6/11/2021      
+    TDOTOspec.m by Dr. Kent Gee at BYU, found in BYU Acoustics  
+    under General Signal Processing/src/Analyzing Spectra
+    https://git.physics.byu.edu/acoustics
+    
+    Dr. Gee's code included this note:
+    BUTTER is based on a bilinear transformation, as suggested in
+    ANSI standard.  From oct3dsgn function by Christophe Couvreur, Faculte 
+    Polytechnique de Mons (Belgium)
+
+    
+    last modified 7/15/2021      
     """
-    from scipy.signal import butter, lfilter
     import numpy as np
     import math
+    import scipy.signal as sig
     
     
     #Generate Frequency Array
-    G = 10**(3/10) #octave frequency ratio
+    if exact == True:    
+        G = 10**(3/10) #octave frequency ratio
+        #based on IEC standard 61260-1 found in equation 1 in section 5.2.1. 
+    elif exact == False:
+        G = 2
+        #generally accepted octave frequency ratio
     fr = 1000     #reference frequency
     
     
     # Get the initial mid-band frequency
-    #According to IEC standards
+    #According to IEC standard 61260-1 section 5.4
     if frac % 2 != 0: #Odd frac
         x_init = math.ceil(frac*np.log(f0/fr)/np.log(G))
         x_final = math.floor(frac*np.log(f1/fr)/np.log(G))
@@ -85,28 +109,69 @@ def OctaveFilter(data,f0,f1,fs,frac=1,order=5):
         mid_bands = fr*G**((2*x+1)/(2*frac))
         
     #Get frequency band limits
+    #References codes by Kent Gee and Christophe Couvreur
     upper_limits = mid_bands*G**(1/(2*frac)) #low ends of filter
-    lower_limits = mid_bands/G**(1/(2*frac)) #high ends of filter
+    lower_limits = mid_bands/G**(1/(2*frac)) #high ends of filter   
+    Qr = mid_bands/(upper_limits - lower_limits)
+    Qd = np.pi/2/frac/np.sin(np.pi/2/frac)*Qr
+    alpha = (1 + np.sqrt(1+4*Qd**2))/2/Qd
     
+    
+    
+    #Zero mean
+    data = data - np.mean(data)
+    
+    #Window, and rescaling
+    w = np.hanning(len(data))
+    data = data*w/np.sqrt(np.mean(w**2))
+
     
     #Use a butterworth filter on the data according to the fractional octave bands
-    nyq = 0.5*fs #nyquist frequency
-    
-   
-    #apply butterworth filter to data
     for i in range(len(mid_bands)):
         
+        #Use a decimation factor to keep the sampling frequency within 
+        #reasonable limits.
         
-        b,a = butter(order, [lower_limits[i]/nyq, upper_limits[i]/nyq], btype='band')
-        placeholder = lfilter(b,a,data)
+        if mid_bands[i] < fs/20: #factor of 20 suggested as threshold for decimation
+            deci_rat = np.ceil(fs/mid_bands[i]/20)  #Decimation factor
+            #decdata = sig.decimate(sig.decimate(data,10),2)
+        else:
+            deci_rat = 1
         
-        if i == 0:   #This initializes the filt_data array
+        fsdec = fs/deci_rat #Decimated sampling rate
+        
+        
+        W1 = mid_bands[i]/(fsdec/2)/alpha[i]
+        W2 = mid_bands[i]/(fsdec/2)*alpha[i]
+        
+        
+        b,a = sig.butter(order, [W1, W2], btype='band')
+        
+        #Rescale decimated data
+        if deci_rat > 1:
+            decdata = sig.resample(data, int(len(data)/deci_rat))
+        else:
+            decdata = data
+            
+        placeholder = sig.lfilter(b,a,decdata)
+    
+        #Interpolate back up to original length of data
+        #This ensures that the output filt_data is a nxm array, where
+        #n is the number of center frequencies and m is the original length of 
+        #the data
+        if len(decdata) != len(data):
+            dummy_time_act = np.arange(len(data))/fs
+            dummy_time = np.arange(len(decdata))/fsdec
+            placeholder = np.interp(dummy_time_act, dummy_time, placeholder)         
+        
+       
+        #This initializes the filt_data array
+        if i == 0:   
             filt_data = np.zeros((len(mid_bands),len(placeholder)))
         
-        #Fill in filt_data with the butterworth filter
+        #Fill in filt_data with the filtered data held in placeholder
         for j in range(len(placeholder)):
             filt_data[i,j] = placeholder[j]
-
     
     return filt_data, mid_bands
 

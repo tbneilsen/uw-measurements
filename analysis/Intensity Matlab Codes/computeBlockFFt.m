@@ -22,7 +22,9 @@ numblocks = floor(2*N/ns-1);
 %%% CHUNK DATA
 blockData = [reshape(data(1:((numblocks)*ns/2)),[ns/2,(numblocks)])',...
     reshape(data((1:((numblocks)*ns/2))+ns/2),[ns/2,numblocks])'];
+
 blockData = blockData.*repmat(w,[numblocks,1]);
+
 %%% FFT
 X = fft(blockData,ns,2);
 
