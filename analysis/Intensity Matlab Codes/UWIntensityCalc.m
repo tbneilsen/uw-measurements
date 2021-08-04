@@ -17,7 +17,7 @@ a = .34; % distance between 2 microphones
 
 l = 3; % length of recording
 fs = 150000;
-ns = l*fs;
+ns = 450000;
 df = fs/ns;
 fss = 0:df:(fs/2-df);
 
@@ -25,11 +25,13 @@ fss = 0:df:(fs/2-df);
 % To use data, run this segment of code
 % For a simulated field, run the next segment of code instead
 
-w = hann(ns)';
+%w = hann(ns)';
+m = 0:ns-1;
+w = 0.5.*(1-cos(2.*pi.*m./ns));
 W = mean(w.*conj(w)); %Used to scale the ASD for energy conservation
 
 %An example file path--use your own here
-path = 'W:\uw-measurements-tank\2021-02-17\2021-02-17_scan8';
+path ='D:\uw-acoustics-research\2021-02-17_scan8';
 IDnum = 2;
 
 % Load in data, make sure binfileload.m is downloaded from byuarg library.
@@ -49,7 +51,7 @@ Xss = cat(1, reshape(Xss1, [1 size(Xss1,1) size(Xss1,2)]),...
 %% Calculate intensities
 
 % This code also has capabilities to use PAGE method of finding intensity.
-
+probe_config = [0 0.12 0;0 -.12 0];
 % PAGE = PAGE_func(fss,Xss,probe_config,rho,c,'slope',8);
 TRAD = TRAD_func(fss,Xss,probe_config,rho,c);
 
@@ -64,7 +66,7 @@ Q_TRAD_y = 10*log10(abs(TRAD.Q(2,:))/Iref);
 TRAD_mag = 10*log10(sqrt(TRAD.Q(2,:).^2 + TRAD.I(2,:).^2)/Iref);
 
 %% Plot
-myFigureDefaults(1.8, 'sm');
+%myFigureDefaults(1.8, 'sm');
 
 figure
 plot(fss,I_TRAD_y,'color',[0 0.5 0])

@@ -44,13 +44,13 @@ EL - Lagrangian energy density (Ek - Ep)
 %}
 
 
-if nargin < 4
-    rho = 1.21;
-end
+%if nargin < 4
+%    rho = 1.21;
+%end
 
-if nargin < 5
-    c = 343;
-end
+%if nargin < 5
+%    c = 343;
+%end
 
 omega = 2*pi.*fss;
 
