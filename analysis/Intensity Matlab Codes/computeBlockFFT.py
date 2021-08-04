@@ -66,6 +66,6 @@ def computeBlockFFT(data, ns, w, W):
     X = sci.fft(blockData)
     
     #Scale data
-    Xss = X[:,0:ns//2]/ns*np.sqrt(2/W)
+    Xss = X[:,0:ns//2]*np.sqrt(2/W) #scipy.fft already divides by ns, but matlab does not
     
     return Xss, num_Blocks
