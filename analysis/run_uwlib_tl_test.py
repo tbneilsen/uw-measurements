@@ -1,4 +1,3 @@
-#%%
 import logging
 import os
 import pickle
@@ -44,16 +43,16 @@ c = 1478
 _,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
 A, R, dd = ESAUpose(path_used,desire)
 '''
-acoustic_center_offset = 0.0092
-dd = dd + 2*acoustic_center_offset
-for i in desire:
-    A[i] = list(A[i])
-    R[i] = list(R[i])
-    A[i][1] = A[i][1] + acoustic_center_offset
-    R[i][1] = R[i][1] - acoustic_center_offset
-    A[i] = tuple(A[i])
-    R[i] = tuple(R[i])
-    '''
+acoustic_center_offset = 0.0092                 #This is not commented out for with_acoust_offset
+dd = dd + 2*acoustic_center_offset              #This is not commented out for with_acoust_offset
+for i in desire:                                #This is not commented out for with_acoust_offset
+    A[i] = list(A[i])                           #This is not commented out for with_acoust_offset
+    R[i] = list(R[i])                           #This is not commented out for with_acoust_offset
+    A[i][1] = A[i][1] + acoustic_center_offset  #This is not commented out for with_acoust_offset
+    R[i][1] = R[i][1] - acoustic_center_offset  #This is not commented out for with_acoust_offset
+    A[i] = tuple(A[i])                          #This is not commented out for with_acoust_offset
+    R[i] = tuple(R[i])                          #This is not commented out for with_acoust_offset
+'''
 tshort = np.zeros(len(desire))
 tside = np.zeros(len(desire))
 tdirect = np.zeros(len(desire))
@@ -135,10 +134,10 @@ def main():
         # pdb.set_trace()
 
         # set transmission loss source depth (in m)
-        src_depth = [0.0955]#np.linspace(0.05, 5.0, 512)  # 1.0
+        src_depth = [depth/2]   # depth - A[0][2] used instead of depth/2 for chg_depth
 
         # set receiver depth(s) in m
-        rec_depth = [0.0955] #[2.0,3.0, 3.5]#np.array([1.0, 2.0])
+        rec_depth = [depth/2]   # depth - R[18][2] used instead of depth/2 for chg_depth 
 
         # set depths at which mode functions should be defined
         # orca gets confused if the exact same number is in both src_depth and rec_depth
@@ -209,18 +208,19 @@ def main():
                     # this is where you can plot actual data over the calculated tl
                     plt.plot(ranges,rel_TL, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
-                    plt.ylabel("TL, dB re 0.1 m") # change re depending on what it's to
+                    plt.ylabel("TL, dB re "+str(dd[0])+" m") # change re depending on what it's to
                     plt.title('Range vs Relative Transmission Loss\
                         \nReciever Depth: ' + str(rec_depth[0]) + ' m' +\
                         '\nFrequency: ' + str(f) + ' Hz' +\
                         '\n' + testfile[:-5]) 
                     plt.grid()
                     plt.legend()
+                    plt.gcf().tight_layout()
                     # If you want all freqs to plot on the same graph change @freq to a frequency band or just get rid of it
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '.png'
+                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '_chg_depth.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL
@@ -266,6 +266,7 @@ def main():
                             '\n' + testfile[:-5])
                     plt.grid()
                     plt.legend()
+                    plt.gcf().tight_layout()
                     # If you want all freqs to plot on the same graph change @freq to a frequency band or just get rid of it
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 

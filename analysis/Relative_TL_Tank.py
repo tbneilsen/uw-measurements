@@ -115,7 +115,7 @@ rec_end = rec_end.astype('int')
 t = np.linspace(0,(N-1)/fs,N)
 
 
-'''
+
 #for i in desire:
 plt.figure()
 plt.plot(t[rec_start[0]:rec_end[0]],gated_rec_sig[rec_start[0]:rec_end[0],0], label = str(np.round(dd[0],4)) + ' m')
@@ -128,5 +128,6 @@ rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
 plt.figure()
 plt.plot(dd,rel_TL)
 plt.show()
-'''
+
+
 # %%
