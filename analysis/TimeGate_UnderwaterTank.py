@@ -151,9 +151,11 @@ def gateValue(AEgir_pose, Ran_pose, D, c=1478, Coordinate='tank',Print='True'):
     -------
     tshort: float;
             shortest time for a single reflection in seconds. 
-    tside:  float
+    tside:  float;
             shortest time for single reflection of side wall reflections only 
             but still allowing potential for seabed and surface reflections.
+    tdirect: float;
+            time for direct signal to arrive based on input speed of sound.
     directpath: float;
                 distance of direct path from hydrophone to hydrophone
     

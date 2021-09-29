@@ -73,7 +73,7 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     Polytechnique de Mons (Belgium)
 
     
-    last modified 7/15/2021      
+    last modified 9/1/2021      
     """
     import numpy as np
     import math
@@ -92,12 +92,12 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     
     # Get the initial mid-band frequency
     #According to IEC standard 61260-1 section 5.4
-    if frac % 2 != 0: #Odd frac
+    if frac % 2 == 0: #Even frac
+        x_init = math.ceil(frac*np.log(f0/fr)/np.log(G) - 1/2)
+        x_final = math.floor(frac*np.log(f1/fr)/np.log(G) - 1/2)
+    else: #Odd frac
         x_init = math.ceil(frac*np.log(f0/fr)/np.log(G))
         x_final = math.floor(frac*np.log(f1/fr)/np.log(G))
-    else: #Even frac
-        x_init = math.ceil(frac*np.log(f0/fr)/np.log(G) - 1/2)
-        x_final = math.floor(frac*np.log(f0/fr)/np.log(G) - 1/2)
     
     x = np.arange(x_init,x_final + 1)
     
@@ -176,25 +176,34 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     return filt_data, mid_bands
 
 
-def T60est(d,c = 1478,zw = 1.5e6,zi= 3.26e6):
+def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
     """
     Parameters
     ----------
-    d:      float;
-            depth of water
-    c:      float, Optional;
-            speed of sound in water. Defaults to 1478m/s (rounded to nearest 
-            whole value for any depth of water the tank can have), using 
-            Garrett's eq. for the speed of sound in water relative to 
-            temperature, depth, and salinity for a temparature of 19 degrees C 
-            (rough avg. in tank).
-    zw:     float, Optional;
-            Acoustic impedance of water is generally accepted as 1.5E6 Ns/m**-3
-            and defaults to this value.
-    zi:     float, Optional;
-            Acoustic impdeance of side walls. Defaults to acoustic impdedance 
-            of acrylic, accepted as 3.26E6 Ns/m**-3 from the following source:
+    d:          float;
+                depth of water
+    c:          float, Optional;
+                speed of sound in water. Defaults to 1478m/s (rounded to nearest 
+                whole value for any depth of water the tank can have), using 
+                Garrett's eq. for the speed of sound in water relative to 
+                temperature, depth, and salinity for a temparature of 19 degrees C 
+                (rough avg. in tank).
+    zi:         float, Optional;
+                Acoustic impedance of side walls. Defaults to acoustic impdedance 
+                of acrylic, accepted as 3.26E6 Ns/m**-3 from the following source:
                 https://www.ndt.net/links/proper.htm 
+    ai:         float or ndarray of float, Optional;
+                Absorption coefficient of tank walls. Defaults to 0 which ignores
+                this input. If the absorption coefficient of the walls is known, 
+                user can input this value and zi will be ignored, solving T60 
+                using the known absorption. This may also be beneficial when 
+                accounting for wall anechoic paneling (floor still assumed zi input). 
+    alpha_p:    float or ndarray of float, Optional;
+                Absorption coefficient due to thermoviscous molecular propagation
+                losses. Defaults as 0 such that there is no propagation absorption.
+                Can use alpha_prop(f,T,S,pH,depth) code to feed in an array of 
+                frequency dependent absorption coefficients due to propagation 
+                losses through the water.
                 
     Returns
     -------
@@ -223,34 +232,48 @@ def T60est(d,c = 1478,zw = 1.5e6,zi= 3.26e6):
     must be 5-10x longer than the T60) 
     
     This is all relative to the depth of the water, and if the boundary 
-    impedance is altered from the standard tank. 
+    impedance is altered from the standard tank. May also input a wall absorption 
+    coefficient if known. Such as from a measured wall absorption coefficient. 
+    This currently still assumes the floor absorption is according to zi however.
+    This improves all estimations given in this function.  
     
-    Changed order of output
-    
-    last modified 2/22/2021      
+    Can also add in propagation absorption coefficients determined through 
+    alpha_prop(f,T,S,pH,depth). Or leave that out by allowing the default to 
+    remain 0. This further improves all estimations given in this function.
+     
+    last modified 9/1/2021      
     """
     import numpy as np
     #dimensions of tank
     Lx = 1.22   #width of tank (m) 
     Ly = 3.66   #length of tank (m)
     V = Lx*Ly*d #volume relative to current water depth
-    A_acrylic = Lx*Ly + 2*Ly*d + 2*Lx*d #total surface area of acrylic boundaries
+    A_floor = Lx*Ly #total surface area of tank floor
+    A_acrylic = A_floor + 2*Ly*d + 2*Lx*d #total surface area of acrylic boundaries
     A_waterair = Lx*Ly #total surface area of water-air boundary
     S = A_acrylic +A_waterair #total surface area of (semi)absorptive boundaries
     
     #estimate absorption coefficients for boundaries
-    za = 415 #accepted impedance of air in Ns/m**-3
+    zw = 1.5E6 #accepted acoustic impedance of water in Ns/m**-3
+    za = 415 #accepted acoustic impedance of air in Ns/m**-3
     alpha_acrylic = 1-np.abs((zw-zi)/(zw+zi))
     alpha_air = 1-np.abs((zw-za)/(zw+za)) 
-    
-    #Sum of alpha*A/S found in eq. 3.4.1 of Gemba
-    #Absorption can be more thoroughly estimated using Physcs 661 notes. 
     Aw = alpha_air*A_waterair/S #water absorption coefficient spatially averaged
-    Ai = alpha_acrylic*(A_acrylic)/S #acrylic absorption coefficient spatially averaged
-    Absorb = Aw + Ai #spatially averaged Absorption Coefficient
     
-    #Eyring equation found in 661 notes eq. 4-24.116
-    T60 = (24*np.log(10)/c) * (V/(-S*np.log(1-Absorb)))
+    if ai == 0:    
+        #using zi (estimated acoustic impedance of walls)
+        #Sum of alpha*A/S found in eq. 3.4.1 of Gemba
+        #Absorption can be more thoroughly estimated using Physcs 661 notes. 
+        Ai = alpha_acrylic*(A_acrylic)/S #acrylic absorption coefficient spatially averaged
+        Absorb = Aw + Ai #spatially averaged Absorption Coefficient
+    else:
+        #using ai (estimated acoustic absorption coefficient of walls) 
+        Awall = ai*(A_acrylic-A_floor)/S
+        Ai = alpha_acrylic*(A_floor)/S #acrylic absorption coefficient spatially averaged
+        Absorb = Aw + Ai + Awall #spatially averaged Absorption Coefficient
+        
+    #Eyring equation found in 661 notes eq. 4-24.124(reducing to 4-2.4.116 when alpha_p=0)
+    T60 = (24*np.log(10)/c) * (V/(8*alpha_p*V - S*np.log(1-Absorb)))
     fschroeder = 0.6*np.sqrt(c**3*T60/V)
     signal_length = 10*T60
     sigL = signal_length
@@ -373,9 +396,9 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     
     Returns
     -------
-    alpha_prop:     ndarray of float;
-                    absorption coefficient if sound (alpha) for propagation 
-                    losses through the water. 
+    a_p:    ndarray of float;
+            absorption coefficient if sound (alpha) for propagation 
+            losses through the water. 
     
     Notes
     -----
@@ -390,7 +413,9 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     Can apply this in propagation models similar to account for thermoviscous
     molecular losses.
 
-    last modified 4/27/2021      
+    For reference: http://resource.npl.co.uk/acoustics/techguides/seaabsorption/
+    
+    last modified 9/1/2021      
     """
     import numpy as np
     #relaxation frequency for boron
@@ -401,11 +426,146 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     term1 = 0.106*(f1*f**2)/(f**2+f1**2)*np.exp((pH-8)/0.56)
     term2 = 0.52*(1+T/43)*(S/35)*(f2*f**2)/(f**2+f2**2)*np.exp(-depth/6)
     term3 = 0.00049*f**2*np.exp(-(T/27 + depth/17))
-    alpha_prop = term1 + term2 + term3 
-    return alpha_prop
+    a_p = term1 + term2 + term3 
+    return a_p
 
 
+#before the following function can be used, currently the variable below must
+#be initialized to ensure it will function due to a conditional statement used.  
+l1 = None #DO NOT ERASE
+def T60meas_bounds(data,fs):
+    """
+    Parameters
+    ----------
+    data:       Ndarray;
+                Impulse Response data.
+    fs:         Float;
+                Sampling rate. 
+    
+    Returns
+    -------
+    tbounds:    List (2 values);
+                List of the initial and final time bounds to perform the 
+                reverse Schroeder integration on T60meas(data,fs,t0,t1,d,c,rt,plot)
 
+    Notes
+    -----
+    Author: Cameron Vongsawad
+    
+    Utilize a pop up graph to view the 10log10(h(t)**2) of an input impulse 
+    response or h(t). This allows you to choose the appropriate time bounds 
+    to perform the reverse Schroeder integration on the impulse response h(t). 
+    
+    *****Because of the conditional statement in updatePlot(), the statement: 
+    "l1=None" must remain before this function. This simply initializes l1 
+    until another workaround is determined. 
+    
+    This is to be passed into the T60meas code in order to plot the decay curve 
+    and determine the T60 of the impulse response. OctFilter() is recommended 
+    prior to this function in order to pass through specific frequency bands.
+    When doing this, it is also recommended that you write a loop to loop 
+    through each octave band through this function.
+    
+    last modified 7/19/2021      
+    """
+    
+    
+    #Creatre fonts to be used in the plotting.
+    LARGE_FONT= ("Verdana", 12)
+    #Medium_FONT= ("Verdana", 10)
+    
+    #import necessary packages for use in GUI and plotting
+    import tkinter
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    # Implement the default Matplotlib key bindings.
+    from matplotlib.backend_bases import key_press_handler
+    from matplotlib.figure import Figure
+    
+    #Setup the main window for the GUI    
+    root = tkinter.Tk()
+    root.wm_title("Check h(t)**2")
+    label = tkinter.Label(root, text="Impulse Response Squared in dB", font=LARGE_FONT)
+    label.pack(pady=10,padx=10)
+    #Create a figure to plot
+    import numpy as np
+    fig = Figure(figsize=(10, 8), dpi=100)
+    ax = fig.add_subplot(111)#.plot(t,data)
+    #Create time array for the sample data (IR)
+    t = np.linspace(0,len(data)/fs,len(data))
+    #Grab data to plot and adjust to properly view h(t)**2
+    floor = np.max(data)*1e-5 
+    ht = np.clip(data,floor,(np.max(data)+floor)) #data w/out zeros
+    b = 10*np.log10((np.abs(ht))**2)
+    #Plot initial data
+    fig.suptitle("Choose a Time Interval (t1 to t2) for Reverse Schroeder Integration."+
+                 "This should be where the plot is most linear.")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Level (dB)")
+    ax.plot(t,b)
+    ax.grid(True)
+    fig.canvas.draw_idle()
+    
+    #Create inputs for choosing bounds on the graph
+    in1_label = tkinter.Label(root,text="t1",font=LARGE_FONT)
+    root.in1 = tkinter.Entry(root)
+    in2_label = tkinter.Label(root,text="t2",font=LARGE_FONT)
+    root.in2 = tkinter.Entry(root)
+    in1_label.pack(side="left", fill="x", expand = False)
+    in2_label.pack(side="right", fill="x", expand = False)
+    root.in1.pack(side="left", fill="x", expand = False)
+    root.in2.pack(side="right", fill="x", expand = False)
+    
+    #Replace vlines for checking bounds on the 10log10(h(t)**2) plot
+    #when the Check button is pressed. 
+    def updatePlot(t1,t2):
+        tt1 = float(t1)
+        tt2 = float(t2)
+        global l1
+        global l2 
+        if l1 != None:
+            ax.lines.remove(l1)
+            ax.lines.remove(l2)
+            fig.canvas.draw_idle()
+        l1 = ax.axvline(tt1,color="orange",linestyle="--")
+        l2 = ax.axvline(tt2,color="orange",linestyle="--")
+        fig.canvas.draw_idle()
+    
+    #calculate the reverberation time based on the time bounds chosen when 
+    #Run T60mean button is pressed.     
+    def Reverb(t1,t2):
+        tt1 = float(t1)
+        tt2 = float(t2)
+        global tbounds
+        global t60
+        tbounds = [tt1,tt2]
+        root.destroy()
+        
+    #A tk.DrawingArea.
+    canvas = FigureCanvasTkAgg(fig, master=root)  
+    canvas.draw()
+    
+    #Create a toolbar for the GUI including ability to save plot. 
+    toolbar = NavigationToolbar2Tk(canvas, root)
+    toolbar.update()
+    canvas.mpl_connect("key_press_event", lambda event: print(f"you pressed {event.key}"))
+    canvas.mpl_connect("key_press_event", key_press_handler)
+    
+    #Create buttons for control in GUI
+    run_button = tkinter.Button(root,text="Run T60meas",command=lambda: Reverb(root.in1.get(),root.in2.get()))
+    check_button = tkinter.Button(root,text="Check",command=lambda: updatePlot(root.in1.get(),root.in2.get()))
+    
+    # Packing order for Widgets are processed sequentially.
+    # The canvas is rather flexible in its size, so we pack it last which makes
+    # sure the UI controls are displayed as long as possible.
+    run_button.pack(side="bottom")
+    check_button.pack(side="bottom")
+    toolbar.pack(side=tkinter.BOTTOM, fill="y")#tkinter.X)
+    canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+    #Loop GUI
+    tkinter.mainloop()
+    
+    #Return the bounds in a list and the T60 time. 
+    return tbounds
 
 def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     """
@@ -493,7 +653,7 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     schroeder_dB = 10*np.log10(schroeder)  
 
     if rt == 'T10':
-        #determine T30 between -5dB and -15dB of the max value of the decay curve
+        #determine T10 between -5dB and -15dB of the max value of the decay curve
         init = -5.0
         end = -15.0
         factor = 6.0 #amount to mult. T10 by to extrapolate T60
@@ -508,16 +668,25 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
         end = -35.0
         factor = 2.0 #amount to mult. T30 by to extrapolate T60
     if rt == 'T60':
-        #determine T30 between -5dB and -35dB of the max value of the decay curve
+        #determine T60 between -5dB and -65dB of the max value of the decay curve
         init = -5.0
         end = -65.0
-        factor = 1.0 #amount to mult. T30 by to extrapolate T60
+        factor = 1.0 #amount to mult. T60 by to extrapolate T60
     
+    #Relative value to refine search for init & end bounds for rt measurement.
+    maxval = np.max(schroeder_dB)
+    schroeder_dB = schroeder_dB - maxval  
     #Linear regression
     #determine the value on the decay curve where it is nearest the init and end
     #values below the maximum of the the decay curve
     sch_init = schroeder_dB[np.abs(schroeder_dB - init).argmin()]
     sch_end = schroeder_dB[np.abs(schroeder_dB - end).argmin()]
+    
+    check_actual = (sch_init - sch_end +5)
+    check_bounds = (init-end)
+    if check_actual < check_bounds:
+        raise ValueError(f"Decay not large enough for {rt} measurement. Choose smaller rt value.")
+        
     #indices of where the decay curve matches the init and end condition
     init_sample = np.where(schroeder_dB == sch_init)[0][0]
     end_sample = np.where(schroeder_dB == sch_end)[0][0]
@@ -543,7 +712,7 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
         plt.ylabel('Level (dB)')
         plt.grid()
         #plot Decay Curve
-        plt.plot(t,schroeder_dB)
+        plt.plot(t,(schroeder_dB + maxval))
         plt.legend([r'$10log[h^{2}(t)]$','Decay Curve'])
         est,_,_ = T60est(d,c)
         plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms, T60est={np.around(est*1000,decimals=2)}ms')    
