@@ -12,6 +12,19 @@ import sys
 
 sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/uw-library')
 
+def findFreqIndex(f_array,freq): # function that finds the closest index to a desired frequency
+        adjust_array = abs(f_array - freq)
+        val = min(adjust_array)
+        index = np.where(adjust_array == val)[0][0]
+        return index
+
+def relOAPSLfft(Gxx,freq_index,plusorminus):
+    listlen = len(Gxx[0,:])
+    OASPL = np.zeros(listlen)
+    for i in range(listlen):
+        OASPL[i] = 10*np.log10(np.sum(Gxx[freq_index-plusorminus:freq_index+plusorminus,i])/np.sum(Gxx[freq_index-plusorminus:freq_index+plusorminus,0]))
+    return OASPL
+
 import uwlib
 from uwlib.orca import ORCA
 from ESAUdata import ESAUdata
@@ -35,7 +48,15 @@ path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2
 
 path8 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24/2021-06-24_scan7' # 1 - 10 kHz linear chirp, 11 points 
 path9 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-06-24B/2021-06-24_scan' # 10 - 100 kHz linear chirp, 11 points
-path_used = path7
+
+path10 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan' # 100 kHz
+path11 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan1' # 80 kHz
+path12 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan2' # 50 kHz
+path13 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan3' # 30 kHz
+path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan4' # 10 kHz
+
+path_used = path14
+freqs = [10000.0]
 desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
@@ -67,21 +88,21 @@ gated_rec_sig = np.zeros((N,len(desire)))
 for i in desire:
     gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,tside[i],leading,0.1)
 
-'''
+
 ns = 2**15
 unitflag = 0
 pref = 1e-6
 Gxx = np.zeros((ns//2,len(desire)))
-OASPL = np.zeros(len(desire))
-_, f, _ = autospec(ch1, fs, ns, N, unitflag, pref)
+#OASPL = np.zeros(len(desire))
+_, f, _ = autospec(rec_sig, fs, ns, N, unitflag, pref)
 for i in desire:
-    Gxx[:,i], _, OASPL[i] = autospec(ch1[:,i], fs, ns, N, unitflag, pref)
-
+    Gxx[:,i], _, _ = autospec(rec_sig[:,i], fs, ns, N, unitflag, pref)
+'''
 start_freq = 10000
 end_freq = 100000
 rel_Gxx_level, freq_band = freqVsRelTLwithAutospec(Gxx,f,start_freq,end_freq)
 
-'''
+
 from Relative_TL_Tank import calcRelativeTransmissionLoss
 
 rec_start = fs*(tdirect + leading)
@@ -91,6 +112,11 @@ rec_start = rec_start.astype('int')
 rec_end = rec_end.astype('int')
 
 rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
+'''
+
+plusorminus = 50
+freq_index = findFreqIndex(f,freqs[0])
+rel_TL_fft = relOAPSLfft(Gxx,freq_index,plusorminus)
 
 SHOW_PLOTS = False
 SAVE_PLOTS = True
@@ -98,7 +124,7 @@ SAVE_PLOTS = True
 logger = logging.getLogger(__name__)
 
 SVP_FOLDER = "orcafiles"
-SAVE_FOLDER = "defaultoutput/2021-07"
+SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/orca_tank/2021-09"
 
 # Plot TL for differenet frequencies vs which parameter?
 
@@ -122,15 +148,16 @@ def main():
 
     max_modes = 1000
 
-    test_env_files = ["svp_tank_0.191m.toml"]
+    OPT_FILE = '/home/byu.local/sh747/underwater/scott-hollingsworth/underwater-measurements/analysis/orcafiles/orca_tank_opt.toml'
+    test_env_files = ["svp_tank_air_0.519m.toml"]
 
-    freqs = [100000.0]
+
 
     for testfile in test_env_files:
         full_file = os.path.join(SVP_FOLDER, testfile)
 
         logger.info(f"Telling ORCA to load {full_file}")
-        orca = ORCA(base_svp=full_file) # , base_opt = OPT_FILE)
+        orca = ORCA(base_svp=full_file , base_opt = OPT_FILE)
         # pdb.set_trace()
 
         # set transmission loss source depth (in m)
@@ -152,9 +179,9 @@ def main():
         # max modes for orca uses negative values to limit number of modes, but this does weird things
         # when trying to compare back to the rmin stuff
         # pdb.set_trace()
-        orca.max_modes(max_modes)
-        orca.set_num_modes = max_modes
-        orca.max_num_modes = max_modes
+        # orca.max_modes(max_modes)
+        #orca.set_num_modes = max_modes
+        #orca.max_num_modes = max_modes
 
         # set depths at which mode functions should be defined
         orca.set_mode_grid(mode_depth, force_list=True)
@@ -206,9 +233,9 @@ def main():
                     plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])),\
                          label = "calc TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
                     # this is where you can plot actual data over the calculated tl
-                    plt.plot(ranges,rel_TL, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
+                    plt.plot(ranges,rel_TL_fft, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
-                    plt.ylabel("TL, dB re "+str(dd[0])+" m") # change re depending on what it's to
+                    plt.ylabel("TL, dB re "+str(round(dd[0],3))+" m") # change re depending on what it's to
                     plt.title('Range vs Relative Transmission Loss\
                         \nReciever Depth: ' + str(rec_depth[0]) + ' m' +\
                         '\nFrequency: ' + str(f) + ' Hz' +\
@@ -220,7 +247,7 @@ def main():
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '_chg_depth.png'
+                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '_sum+-' + str(plusorminus) + 'bins.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL

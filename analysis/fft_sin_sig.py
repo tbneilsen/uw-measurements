@@ -1,7 +1,6 @@
 #%%
 import sys
 import numpy as np
-from Relative_TL_Tank import calcRelativeTransmissionLoss
 
 def findFreqIndex(f_array,freq): # function that finds the closest index to a desired frequency
         adjust_array = abs(f_array - freq)
@@ -69,12 +68,8 @@ for i in [0,10,20,50,99]:
     plt.xlabel('frequency (Hz)')
     plt.show()
 '''
-rec_start = fs*(np.zeros(len(desire))+leading)
-rec_start = rec_start.astype('int')
-rec_end = np.zeros(len(desire))
 rel_OASPL_fft = relOAPSLfft(Gxx,index,plusorminus)
-rel_OASPL_time = calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end,False)
-#rel_OASPL_time = relOASPLtime(rec_sig)
+rel_OASPL_time = relOASPLtime(rec_sig)
 dd = np.array([0.1 + round(i/99,3) for i in range(100)])
 plt.figure()
 plt.plot(dd,rel_OASPL_fft, label = 'from fft')
