@@ -71,7 +71,7 @@ rmin = 0.0001
 # Max range of Interest
 #   - 0 to use S/R geometry
 #   - number for range
-rmax = 0
+rmax = 0.01
 # Phase Step Parm
 #   Step by 2*pi/phfac
 #   - Set to 4-8

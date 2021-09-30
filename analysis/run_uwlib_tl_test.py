@@ -1,3 +1,4 @@
+#%%
 import logging
 import os
 import pickle
@@ -55,8 +56,8 @@ path12 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/
 path13 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan3' # 30 kHz
 path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan4' # 10 kHz
 
-path_used = path14
-freqs = [10000.0]
+path_used = path10
+freqs = [100000.0]
 desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
@@ -123,8 +124,8 @@ SAVE_PLOTS = True
 
 logger = logging.getLogger(__name__)
 
-SVP_FOLDER = "orcafiles"
-SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/orca_tank/2021-09"
+SVP_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/orcafiles"
+SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-09"
 
 # Plot TL for differenet frequencies vs which parameter?
 
@@ -148,7 +149,7 @@ def main():
 
     max_modes = 1000
 
-    OPT_FILE = '/home/byu.local/sh747/underwater/scott-hollingsworth/underwater-measurements/analysis/orcafiles/orca_tank_opt.toml'
+    OPT_FILE = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/orcafiles/orca_tank_opt.toml'
     test_env_files = ["svp_tank_air_0.519m.toml"]
 
 
@@ -239,7 +240,8 @@ def main():
                     plt.title('Range vs Relative Transmission Loss\
                         \nReciever Depth: ' + str(rec_depth[0]) + ' m' +\
                         '\nFrequency: ' + str(f) + ' Hz' +\
-                        '\n' + testfile[:-5]) 
+                        '\n' + testfile[:-5] +\
+                        '\n Modes: ' + str(nmode)) 
                     plt.grid()
                     plt.legend()
                     plt.gcf().tight_layout()
