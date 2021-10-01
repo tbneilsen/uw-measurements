@@ -56,8 +56,8 @@ path12 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/
 path13 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan3' # 30 kHz
 path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan4' # 10 kHz
 
-path_used = path10
-freqs = [100000.0]
+path_used = path14
+freqs = [10000.0]
 desire = [i for i in range(100)]
 channel = [0,1]
 c = 1478
@@ -125,7 +125,7 @@ SAVE_PLOTS = True
 logger = logging.getLogger(__name__)
 
 SVP_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/orcafiles"
-SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-09"
+SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-10"
 
 # Plot TL for differenet frequencies vs which parameter?
 
@@ -158,7 +158,7 @@ def main():
         full_file = os.path.join(SVP_FOLDER, testfile)
 
         logger.info(f"Telling ORCA to load {full_file}")
-        orca = ORCA(base_svp=full_file , base_opt = OPT_FILE)
+        orca = ORCA(base_svp=full_file, base_opt = OPT_FILE)
         # pdb.set_trace()
 
         # set transmission loss source depth (in m)
@@ -232,9 +232,9 @@ def main():
                     plt.figure()
                     # You also need to comment/uncomment out plt.savefig() in or out of loop!!
                     plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])),\
-                         label = "calc TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
+                         label = "calc TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
                     # this is where you can plot actual data over the calculated tl
-                    plt.plot(ranges,rel_TL_fft, label = "true TL re " + str(ranges[0]) + ' m @ ' + str(f) + " Hz") # true Relative TL
+                    plt.plot(ranges,rel_TL_fft, label = "true TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
                     plt.ylabel("TL, dB re "+str(round(dd[0],3))+" m") # change re depending on what it's to
                     plt.title('Range vs Relative Transmission Loss\
@@ -249,7 +249,7 @@ def main():
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '_sum+-' + str(plusorminus) + 'bins.png'
+                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL

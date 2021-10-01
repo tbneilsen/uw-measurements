@@ -85,14 +85,14 @@ type = "linear"
 h = 0.03
 cp1 = 2750.0
 cp2 = 2750.0
-cs1 = 0.0 # shear speed
-cs2 = 0.0 # 
+cs1 = 1430.0 # shear speed found at https://www.rshydro.co.uk/sound-speeds/
+cs2 = 1430.0 # 
 rho1 = 1.19
 rho2 = 1.19
 ap1 = 0.128  # attenuation
 ap2 = 0.128  # dB/(m*kHz)
-as1 = 0
-as2 = 0
+as1 = 26.2  # found at https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 4 converted to dB/(m*kHz)
+as2 = 26.2
 
 [[layer_profiles]]
 type = "linear"
@@ -113,11 +113,11 @@ as2 =  0.0
 # -------
 # This is Concrete
 [lower_halfspace]
-cp = 3450.0
-cs = 0.0
+cp = 4500.0  # https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 3
+cs = 3400.0  # https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 3
 rho = 2.30
 ap = 0.5
-as = 0.0
+as = 50.0   # for now it's just larger than acrylic
 
 # Section 8: Top Layers
 # This is unsupported since we have no use for it. It could be useful for
