@@ -34,6 +34,9 @@ path12 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/
 path13 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan3' # 30 kHz
 path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan4' # 10 kHz
 
+from pathlib import Path
+filename = Path(path10)
+
 path_used = path14
 freq = 10000
 desire = [i for i in range(100)]
