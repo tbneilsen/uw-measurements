@@ -1,0 +1,124 @@
+# ORCA NORMAL MODE MODEL SETTINGS
+#
+# This TOML File is an updated configuration file to interface with ORCA
+# Follow the comments for directions, as all comments are proceeded with '#'
+#
+# This TOML File assumes version 2.0 of the ORCA opt files
+
+# -------
+# SECTION 1: General Set-up
+# -------
+# Insert the name of the file here. Not necessarily filename.
+svp_title = "svp_tank"
+
+# -------
+# SECTION 2: Upper Halfspace
+# -------
+[upper_halfspace]
+# speed of sound
+cp = 343.0
+cs = 0.0
+# density
+rho = 0.001225  # let's find a more accurate value for this: https://en.wikipedia.org/wiki/Density_of_air
+# attenuation
+ap = 0.0
+as = 0.0
+
+
+# -------
+# SECTION 3: SVP Points and Tolerance
+# -------
+[svp_ctol]
+# tolerance used in fitting SVP to eliminate layers
+# use 0 to keep all layers
+ctol = 0
+
+
+# -------
+# SECTION 4: Ocean SVP Profile
+# -------
+# Make sure that section 3 includes the correct number of SVP points
+[ocean_svp]
+# will you be using constant rho and ap?
+constant_rho_ap = true
+# constant rho (will be added on the first line)
+rho = 1
+# constant ap
+ap = 0
+
+# The ocean SVP points. If constant rho and ap was not selected, include them
+# in each layer
+# layers can be either a list of lists (the current example) or a dictionary of pairs
+# seen below.
+# list version MUST follow pattern of [z, cp] (if constant is false)
+# or [z, cp, rho, ap]  (if constant is true)
+
+# if constant_rho_ap is set to false, the list and dictionary *must* include rho and ap
+# values for each defined layer
+# sidenote, ALL values in a TOML array must be of the same type, so just add a .0
+
+layers = [
+    [0.0, 1478.0],
+    [0.55, 1478.0]
+]
+
+
+# -------
+# SECTION 6: Bottom Layer Profiles
+# -------
+# Make sure that section 5 (where is section 5) includes the correct number of bottom layers
+[[layer_profiles]]
+# There are three different types of profiles that can be entered.
+# Use "linear", "blug1", "blug2", "blug3" and include the following:
+#   type: linear
+#     h  cp1 cp2  cs1 cs2  rho1 rho2  ap1 ap2  as1 as2
+#   type: blug1
+#     h  cp1   g  cs1 cs2  rho1 rho2  ap1 ap2  as1 as2  beta ctol
+#   type: blug2
+#     h  cp1 cp2  cs1 cs2  rho1 rho2  ap1 ap2  as1 as2  beta ctol
+#   type: blug3
+#     h  cp1 cp2  cs1 cs2  rho1 rho2  ap1 ap2  as1 as2     g ctol
+# just make sure that each object in the list contains the elements requested
+# by the type.
+# This is the acrylic info: 'https://www.ndt.net/links/proper.htm'
+type = "linear"
+h = 0.03
+cp1 = 2750.0
+cp2 = 2750.0
+cs1 = 1430.0 # shear speed found at https://www.rshydro.co.uk/sound-speeds/
+cs2 = 1430.0 # 
+rho1 = 1.19
+rho2 = 1.19
+ap1 = 0.128  # attenuation
+ap2 = 0.128  # dB/(m*kHz)
+as1 = 26.2  # found at https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 4 converted to dB/(m*kHz)
+as2 = 26.2
+
+[[layer_profiles]]
+type = "linear"
+h =  0.255
+cp1 =  343.0
+cp2 =  343.0
+cs1 =  0.0
+cs2 =  0.0
+rho1 =  0.001225 # find more accurate value : https://en.wikipedia.org/wiki/Density_of_air
+rho2 =  0.001225 
+ap1 =  0.164 # from wikipedia: https://en.wikipedia.org/wiki/Attenuation
+ap2 =  0.164
+as1 =  0.0
+as2 =  0.0
+
+# -------
+# SECTION 7: Lower Halfspace
+# -------
+# This is Concrete
+[lower_halfspace]
+cp = 4500.0  # https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 3
+cs = 3400.0  # https://commons.erau.edu/cgi/viewcontent.cgi?article=1150&context=edt table 3
+rho = 2.30
+ap = 0.5
+as = 50.0   # for now it's just larger than acrylic
+
+# Section 8: Top Layers
+# This is unsupported since we have no use for it. It could be useful for
+# oil in the future.

@@ -13,11 +13,20 @@ import sys
 
 sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/uw-library')
 
-def findFreqIndex(f_array,freq): # function that finds the closest index to a desired frequency
-        adjust_array = abs(f_array - freq)
-        val = min(adjust_array)
-        index = np.where(adjust_array == val)[0][0]
-        return index
+def findIndex(array,val):
+  # This function takes an array and a value. This value should be in the array somewhere, you just don't know where
+  # It returns the index of the closest thing to that value
+  # WARNING: if you put a value in that is not inside that array, it will still return the closest thing to it
+  # EXAMPLE: array = [6,7,8,9,10,11,12], val = 7, function returns: 1
+  # EXAMPLE: array = [6.002,7.123,8.34,9.01,10.134,11.12,12.00101], val = 7, function returns: 1
+  # BAD EXAMPLE: array = [6,7,8,9,10,11,12], val = 18000, function returns: 6
+    import numpy as np
+    adjust_array = np.array(array) # turns into a numpy array. A bit easier to work with
+    adjust_array = adjust_array - val # This is subtracting your value from each element in the array
+    adjust_array = abs(adjust_array) # makes all values in adjust array positive
+    minimum = min(adjust_array) # finds the smallest value in the array (should be pretty close to 0 if not 0)
+    index = np.where(adjust_array == minimum)[0][0] # finds the index of that smallest value
+    return index
 
 def relOAPSLfft(Gxx,freq_index,plusorminus):
     listlen = len(Gxx[0,:])
@@ -56,9 +65,11 @@ path12 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/
 path13 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan3' # 30 kHz
 path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/2021-08-03_scan4' # 10 kHz
 
-path_used = path14
-freqs = [10000.0]
-desire = [i for i in range(100)]
+path15 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-10-15/2021-10-15_scan2' # 100 kHz 150 points steady state
+
+path_used = path15
+freqs = [100000.0]
+desire = [i for i in range(150)]
 channel = [0,1]
 c = 1478
 
@@ -116,7 +127,7 @@ rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
 '''
 
 plusorminus = 50
-freq_index = findFreqIndex(f,freqs[0])
+freq_index = findIndex(f,freqs[0])
 rel_TL_fft = relOAPSLfft(Gxx,freq_index,plusorminus)
 
 SHOW_PLOTS = False
@@ -150,7 +161,7 @@ def main():
     max_modes = 1000
 
     OPT_FILE = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/orcafiles/orca_tank_opt.toml'
-    test_env_files = ["svp_tank_air_0.519m.toml"]
+    test_env_files = ["svp_tank_air_0.47m.toml"]
 
 
 
@@ -249,7 +260,7 @@ def main():
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + '.png'
+                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + 'steady_state.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL
@@ -324,13 +335,12 @@ def main():
                     save_name =testfile[:-5]+"_rel_tl_zr_"+str(ranges)+"m.png"
                     #plt.savefig()
                 #plt.savefig()
-                
-                    
-    #ORCA_dict = {'frequency':freqs,'transmission loss':tl,'ranges':ranges}
-    #filename = 'ORCA_TL'
-    #outfile = open(filename,'wb')
-    #pickle.dump(ORCA_dict,outfile)
-    #outfile.close()
+                             
+    ORCA_dict = {'frequency':freqs,'transmission loss':tl,'ranges':ranges}
+    filename = 'ORCA_TL'
+    outfile = open(filename,'wb')
+    pickle.dump(ORCA_dict,outfile)
+    outfile.close()
 
 
 
