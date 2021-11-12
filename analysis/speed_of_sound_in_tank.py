@@ -1,5 +1,4 @@
-#%%
-import re
+import os
 import numpy as np
 from ESAUdata import ESAUdata
 from ESAUpose import ESAUpose
@@ -136,7 +135,7 @@ delta_t[i] = shift/fs
 i = 13
 correlation = signal.correlate(rec_signal[:,i+1], rec_signal[:,0], mode="full")
 shift = int(fs*Tcor[np.argmax(correlation)])-1170
-plt.figure()
+#plt.figure()
 #plt.plot(rec_signal[int(fs*leading_zeros)+5000+shift:N-int(fs*trailing_zeros)+shift,i+1])
 #plt.plot(rec_signal[int(fs*leading_zeros)+5000:N-int(fs*trailing_zeros),0])
 #plt.ylim(-0.1,0.1)
@@ -147,11 +146,11 @@ delta_t[i] = shift/fs
 i = 14
 correlation = signal.correlate(rec_signal[:,i+1], rec_signal[:,0], mode="full")
 shift = int(fs*Tcor[np.argmax(correlation)])-1525
-plt.figure()
-plt.plot(rec_signal[int(fs*leading_zeros)+5000+shift:N-int(fs*trailing_zeros)+shift,i+1])
-plt.plot(rec_signal[int(fs*leading_zeros)+5000:N-int(fs*trailing_zeros),0])
-plt.ylim(-0.1,0.1)
-plt.show()
+#plt.figure()
+#plt.plot(rec_signal[int(fs*leading_zeros)+5000+shift:N-int(fs*trailing_zeros)+shift,i+1])
+#plt.plot(rec_signal[int(fs*leading_zeros)+5000:N-int(fs*trailing_zeros),0])
+#plt.ylim(-0.1,0.1)
+#plt.show()
 delta_t[i] = shift/fs
 
 c = [] # this will be a list of all the different calculated sound speeds
@@ -211,13 +210,13 @@ plt.errorbar(d_tolerated,\
                 yerr = [c_error_min_tolerated,c_error_max_tolerated],\
                 fmt = 'o',\
                 ecolor = 'green',\
-                label = 'data points')
+                label = 'measured sound speed')
 plt.errorbar(d_excluded,\
                 c_excluded,\
                 yerr = [c_error_min_excluded,c_error_max_excluded],\
                 fmt = 'x',\
                 ecolor = 'red')
-plt.axhline(1478,linestyle='--',color = 'r',label = 'predicted sound speed')
+plt.axhline(1483.65,linestyle='--',color = 'r',label = 'predicted sound speed') # Garret model prediction
 plt.title('Calculating the Speed of Sound in the Tank')
 plt.xlabel('Range (m)')
 plt.ylabel('Sound Speed (m/s)')
@@ -226,8 +225,8 @@ plt.legend()
 #plt.ylim(1430,1510)
 #plt.xlim(0,0.2)
 plt.ylim(1470,1515)
-plt.show()
-
-print(np.mean(c_minus_outlier))
-
-# %%
+#plt.show()
+SAVE_FOLDER = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-11'
+save_name = 'speed_of_sound_in_tank.png'
+plt.savefig(os.path.join( SAVE_FOLDER, save_name))
+#print(np.mean(c_minus_outlier))
