@@ -38,8 +38,14 @@ def readLogFile(filename,location):
         Temperature of the water at the time of measurement (degrees Celsius)
     fs : Float
         Sampling frequency of measurement (Hz)
+    leadingZeros : Float
+        leading zeros before the measurement starts (s)
     signalDuration : Float
         Length of signal (s)
+    trailingZeros : Float
+        trailing zeros after the signal has been sent (s)
+    measurementDuration : Float
+        Length of Measurement (s)
     hWater : Float
         Height/depth of water in tank at time of measurement, measured in meters
         from the bottom of the tank
@@ -172,7 +178,22 @@ def readLogFile(filename,location):
             prev = index + len(substrT)       
             index += len(substrT)     
                              
-                              
+    #Find Leading 0's
+    substrLead = "Leading 0's: "
+    for line in mylines:
+        index = 0
+        prev = 0
+        while index < len(line):
+            index = line.find(substrLead, index)
+            endIndex = line.find("  Signal length:")
+            if index == -1:    # If nothing was found,
+                break           # exit the while loop.
+            leading = line[index+len(substrLead):endIndex]
+
+            prev = index + len(substrLead)      # remember this position for next loop.
+            index += len(substrLead)        # increment the index by the length of substr.
+                                 # (Repeat until index > line length)
+
     #Find signal length
     substrL = "length: "                  
     for line in mylines:          
@@ -188,6 +209,21 @@ def readLogFile(filename,location):
             prev = index + len(substrL)       # remember this position for next loop.
             index += len(substrL)      # increment the index by the length of substr.
                               # (Repeat until index > line length)
+
+    #Find Trailing 0's
+    substrTrail = "Trailing 0's: "
+    for line in mylines:
+        index = 0
+        prev = 0
+        while index < len(line):
+            index = line.find(substrTrail, index)
+            if index == -1:    # If nothing was found,
+                break           # exit the while loop.
+            trailing = line[index+len(substrTrail):] # no endIndex, needs to go to the end of line
+
+            prev = index + len(substrTrail)      # remember this position for next loop.
+            index += len(substrTrail)        # increment the index by the length of substr.
+                                 # (Repeat until index > line length)
                               
     print("Bandwidth: ",bandwidth,'\n',"Water Temp: ",waterTemp,'\n',"Source Position: ",sourcePos,'\n',"Receiver Position: ",receiverPos,'\n',"Sampling Freq: ",samplingFreq,'\n',"Water Height: ",waterDepth)
     
@@ -197,7 +233,10 @@ def readLogFile(filename,location):
     tempWater = float(waterTemp[0:-2])
     fs = float(samplingFreq[0:-2])
     Ns = float(signalLength)
+    leadingZeros = float(leading)/fs
     signalDuration = Ns/fs
+    trailingZeros = float(trailing)/fs
+    measurementDuration = leadingZeros + signalDuration + trailingZeros
     hWater = float(waterDepth[0:-1])
     xSource = float(sourcePos[1:6])
     ySource = float(sourcePos[7:12])
@@ -206,5 +245,4 @@ def readLogFile(filename,location):
     yRec = float(receiverPos[7:12])
     zRec = float(receiverPos[13:-1])
     
-    return freqMin,freqMax,tempWater,fs,signalDuration,hWater,xSource,ySource,zSource,xRec,yRec,zRec
-                              
+    return freqMin,freqMax,tempWater,fs,leadingZeros,signalDuration,trailingZeros,measurementDuration,hWater,xSource,ySource,zSource,xRec,yRec,zRec                             

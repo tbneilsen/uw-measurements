@@ -155,6 +155,7 @@ def ESAUdata(path,desire=[0],channels=[0],N = 450e3,Ncal = 450e3):
     """
     import numpy as np
     import os.path as check
+    import warnings
     ##################################################
     #load generated signal and calibration measurement
     ##################################################
@@ -182,7 +183,7 @@ def ESAUdata(path,desire=[0],channels=[0],N = 450e3,Ncal = 450e3):
         calgen = np.empty(int(Ncal),dtype = float)
         print('')
         print('Warning: No generated calibration file found. Calibration' 
-              +'performed same as gen or not at all. calgen = empty')
+              +' performed same as gen or not at all. calgen = empty')
     
     
     isFile0 = check.isfile(path+ '/cal_000.bin') or check.isfile(path+ '/cal.bin')
@@ -219,48 +220,7 @@ def ESAUdata(path,desire=[0],channels=[0],N = 450e3,Ncal = 450e3):
         print('')
         print('Warning: recording error: calibration not recorded, file is empty')
                 
-                
-    """ 
-    This is the old version of the cal file loading code. This did not allow for 
-    measurements to be taken on unconsecutive channels or without first using ch0
-    if isFile0 == True:
-        if check.isfile(path+ '/cal_000.bin') == True:
-            cal0 = binfileload(path + '/cal_000.bin')
-            cal[:,0] = cal0
-        else: 
-            cal0 = binfileload(path + '/cal.bin')
-            cal[:,0] = cal0
-    else: 
-        cal0 = np.zeros(len(gen),dtype = float)
-        print('')
-        print('Warning: no ch0 calibration file found')
-    
-    if (cal0 == np.zeros(len(gen),dtype = float)) is True:
-        print('')
-        print('Warning: recording error: calibration not recorded, file is empty')
-        
-    if isFile1 == True:
-        if check.isfile(path+ '/cal_001.bin') == True:
-            cal1 = binfileload(path + '/cal_001.bin')
-            cal[:,1] = cal1
-        else: 
-            cal1 = binfileload(path + '/cal (1).bin')
-            cal[:,1] = cal1
-    if isFile2 == True:
-        if check.isfile(path+ '/cal_002.bin') == True:
-            cal2 = binfileload(path + '/cal_002.bin')
-            cal[:,2] = cal2
-        else: 
-            cal2 = binfileload(path + '/cal (2).bin')
-            cal[:,2] = cal2
-    if isFile3 == True:
-        if check.isfile(path+ '/cal_003.bin') == True:
-            cal3 = binfileload(path + '/cal_003.bin')
-            cal[:,3] = cal3
-        else: 
-            cal3 = binfileload(path + '/cal (3).bin')
-            cal[:,3] = cal3
-            """    
+  
     #load all scan binfiles
     ch0 = np.empty((len(gen),len(desire)))
     ch1 = np.empty((len(gen),len(desire)))

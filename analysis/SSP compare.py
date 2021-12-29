@@ -14,11 +14,20 @@ get into those in depth.
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 24,
+          'figure.figsize': (15, 10),
+         'axes.labelsize': 28,
+         'axes.titlesize':29,
+         'axes.titleweight':'bold',
+         'xtick.labelsize':24,
+         'ytick.labelsize':24,
+         'lines.linewidth':3}
+pylab.rcParams.update(params)
 
 t = np.linspace(0,50,500)  #temperature in celcius
-s = np.linspace(0,45,500)  #salinity grams of salt per kg of water. aka parts per 1000
-d = np.linspace(0,600,500) #depth in meters
-
+#s = np.linspace(0,45,500)  #salinity grams of salt per kg of water. aka parts per 1000
+#d = np.linspace(0,600,500) #depth in meters
 
 #garrett
 C1 = lambda T,S,D: 1493 + 3*(T - 10) - 0.006*(T - 10)**2 - 0.04*(T - 18)**2 + 1.2*(S - 35) - 0.01*(T - 18)*(S - 35) + D/61  
@@ -32,6 +41,20 @@ c1 = np.zeros(500)
 c2 = np.zeros(500)
 c3 = np.zeros(500)
 
+
+S=0.03
+D=0.25
+T=t
+c1 = C1(T,S,D)
+c2 = C2(T,S,D)
+c3 = C3(T,S,D)
+
+temp = 20.88
+cc1 = np.around(C1(temp,S,D),decimals=2)
+cc2 = np.around(C2(temp,S,D),decimals=2)
+cc3 = np.around(C3(temp,S,D),decimals=2)
+
+"""
 p = 0
 #D = 0.5
 s = np.zeros(500)
@@ -45,11 +68,15 @@ for T in t:
                 p = p -1
             else: 
                 p = p +1
-
+"""
             
 plt.figure()
-plt.plot(c1)
-plt.plot(c2)
-plt.plot(c3)
-plt.legend(['Garrett','Medwin & Kuperman','Wilson'])
+plt.plot(T,c1)
+plt.plot(T,c2)
+plt.plot(T,c3)
+plt.vlines(temp,1560,1400,linestyle='--')
+plt.xlabel(r'Temperature ($^\circ C$)')
+plt.ylabel('Speed of Sound (m/s)')
+plt.title('Speed of Sound in Water\n for Various Models\n assuming d=0.25m and s=0.03')
+plt.legend([f'Garrett Model {cc1}m/s',f'Medwin Model {cc2}m/s',f'Wilson Model {cc3}m/s','Avg. Water Temperature'])
 plt.show()

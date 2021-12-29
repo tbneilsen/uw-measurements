@@ -55,6 +55,16 @@ def ESAUpose(path,desire = [0],plot = False,Acal = (0.6,2.14,0.3), Rcal = (0.6,2
 
     import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib.pylab as pylab
+    params = {'legend.fontsize': 24,
+              'figure.figsize': (15, 10),
+             'axes.labelsize': 28,
+             'axes.titlesize':29,
+             'axes.titleweight':'bold',
+             'xtick.labelsize':24,
+             'ytick.labelsize':24,
+             'lines.linewidth':3}
+    pylab.rcParams.update(params)
     import os.path as check
     
     isFile_gen = check.isfile(path+'/scan_positions.txt')
@@ -162,8 +172,8 @@ def ESAUpose(path,desire = [0],plot = False,Acal = (0.6,2.14,0.3), Rcal = (0.6,2
                     ax = plt.axes(projection ="3d") 
                     ax.scatter3D(xA, yA, zA, color = "green")
                     ax.scatter3D(xR, yR, zR,color = "red")
-                    ax.scatter3D(Acal[0],Acal[1],Acal[2], color = "orange",marker = "^")
-                    ax.scatter3D(Rcal[0],Rcal[1],Rcal[2], color = "orange",marker = "^")
+                    ax.scatter3D(Acal[0],Acal[1],Acal[2], color = "orange",marker = "^",linewidths = 4)
+                    ax.scatter3D(Rcal[0],Rcal[1],Rcal[2], color = "orange",marker = "^",linewidths = 4)
                     ax.scatter3D(A[i][0],A[i][1],A[i][2],color = "blue",marker = 's',linewidths = 10)
                     ax.scatter3D(R[i][0],R[i][1],R[i][2],color = "blue",marker = 's',linewidths = 10)
                     ax.set_xlabel('X (m)')
@@ -188,78 +198,3 @@ def ESAUpose(path,desire = [0],plot = False,Acal = (0.6,2.14,0.3), Rcal = (0.6,2
         R = [0,0,0]
         dd = 0
         return A, R, dd
-  
-    """
-    ###This is the old code for scans and does not allow for single measurements
-    ###This is kept here just in case the updated code runs into issues in the 
-    ###future which is unlikely. This update was made on 11/16/2020 and after 
-    ###much testing this should be removed and leave the above code allowing for
-    ###either case.
-    import numpy as np
-    import matplotlib.pyplot as plt
-    print('loading scan positions...')
-    ################################################
-    #load in scan positions as A(x,y,z) and R(x,y,z)
-    ################################################
-    pos = np.loadtxt(path+'/scan_positions.txt')
-    A = []
-    a = np.zeros(3)
-    R = []
-    r = np.zeros(3)
-    for i in range(len(pos[:,0])): 
-            a = (pos[i,0],pos[i,1],pos[i,2])
-            r = (pos[i,12],pos[i,13],pos[i,14])
-            A.insert(i,a)
-            R.insert(i,r)    
-    ##########################################################    
-    #create x,y,and z arrays of scan positions for 3D plotting
-    #and highlights positions used for a specific scan
-    ##########################################################
-    print('organizing scan positions...')    
-    xA,yA,zA = np.array([]),np.array([]),np.array([])
-    xR,yR,zR = np.array([]),np.array([]),np.array([])
-    for i in range(len(A)):
-        xA = np.append(xA,A[i][0])
-        yA = np.append(yA,A[i][1])
-        zA = np.append(zA,A[i][2])
-        xR = np.append(xR,R[i][0])
-        yR = np.append(yR,R[i][1])
-        zR = np.append(zR,R[i][2])
-    ##################################################################
-    #calculate all range distances for the full list of scan positions
-    ##################################################################
-    d = np.empty(len(A))
-    for i in range(len(A)):
-        d[i] = np.sqrt( (xA[i]-xR[i])**2 + (yA[i]-yR[i])**2 + (zA[i]-zR[i])**2 )
-    #Plot Scan Grid
-    if plot == True:    
-        print('plotting scan positions...')
-        for i in desire:
-            #plot scan positions  
-            from mpl_toolkits import mplot3d 
-            scan = plt.figure()
-            ax = plt.axes(projection ="3d") 
-            ax.scatter3D(xA, yA, zA, color = "green")
-            ax.scatter3D(xR, yR, zR,color = "red")
-            ax.scatter3D(Acal[0],Acal[1],Acal[2], color = "orange",marker = "^")
-            ax.scatter3D(Rcal[0],Rcal[1],Rcal[2], color = "orange",marker = "^")
-            ax.scatter3D(A[i][0],A[i][1],A[i][2],color = "blue",marker = 's',linewidths = 10)
-            ax.scatter3D(R[i][0],R[i][1],R[i][2],color = "blue",marker = 's',linewidths = 10)
-            ax.set_xlabel('X (m)')
-            ax.set_ylabel('Y (m)')
-            ax.set_zlabel('Z (m)')
-            ax.set_xlim(0,1.22)
-            ax.set_ylim(0,3.66)
-            ax.set_zlim(0,0.91)
-            ax.set_title(f'S{A[i]}, R{R[i]}, d={round(d[i],3)}m')
-        else: 
-            scan == 'nope'
-    #########################################################    
-    #Only save range distances for the desired scan positions
-    #########################################################    
-    dd = np.empty(len(desire))
-    for idx,i in enumerate(desire): 
-        dd[idx] = d[i]
-
-    return A, R, dd
-    """

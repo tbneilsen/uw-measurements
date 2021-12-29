@@ -58,38 +58,57 @@ def IR(rec,gen,fs,wiener=False,domain='f'):
     reverberation chamber" (2018) Willardson, Anderson, Young, Denison, Patchett.
     https://doi.org/10.1121/1.5023351
     
-    last modified 5/17/2021
+    last modified 6/30/2021
     """
     import numpy as np
     if domain == 'time' or 't' or 'temporal':    
+        #The time domain is a slower computation
         #rec(t)*gen(-t)) = h(t)*gen(t)*gen(-t) eq 3.3.5 solve for h(t)
         gen_flip = np.flip(gen) 
         #np.convolve(gen,gen_flip) == sci.correlate(gen,gen) by def.
         #the inverse filter of the function is np.convolve(gen,gen_flip)
-        acorr = np.convolve(gen,gen_flip,mode='same')
-        xcorr = np.convolve(rec,gen_flip,mode='same')
+        #for noise at output (receiver)
+        saa = np.convolve(gen,gen_flip,mode='same')
+        sab = np.convolve(rec,gen_flip,mode='same')
+        #The following does the same thing but via correlate:
         #import scipy.signal as sci 
-        #acorr = sci.correlate(gen,gen,mode='same',method='auto')
-        #xcorr = sci.correlate(rec,gen,mode='same',method='auto')
+        #saa = sci.correlate(gen,gen,mode='same',method='auto')
+        #sab = sci.correlate(rec,gen,mode='same',method='auto')
+        
+        #for noise at input (source) which is more rare
+        #rec_flip = np.flip(rec)
+        ##sbb = np.convolve(rec,rec_flip,mode='same')
+        ##sba = np.convolve(rec_flip,gen,mode='same')
+        
         
         import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(np.abs(acorr))
-        plt.title('Delta Function as result of the Inverse Filter Convolution')
-        plt.xlabel('time (Samples)')
-        plt.ylabel('Amplitude')
-        plt.grid()
+        plot = False
+        #proof that this method applies what some literature refers to as an inverse filter.
+        if plot == True:
+            plt.figure()
+            plt.plot(np.abs(saa))
+            plt.title('Delta Function as result of the Inverse Filter Convolution')
+            plt.xlabel('time (Samples)')
+            plt.ylabel('Amplitude')
+            plt.grid()
         
         #Division in the frequency domain is a deconvolution in the time domain. 
         #which gives H(f) and then ifft(H(f))=h(t)
-        Xcorr = np.fft.fft(xcorr) #double-sided frequency response
-        Acorr = np.fft.fft(acorr) #double-sided frequency response
+        Sab = np.fft.fft(sab) #double-sided frequency response
+        Saa = np.fft.fft(saa) #double-sided frequency response
+        ##Sbb = np.fft.fft(sbb)
+        ##Sba = np.fft.fft(sba)
         #f = np.fft.fftfreq(len(xcorr),d=1/fs)
         
     if domain == 'frequency' or 'freq' or 'f':
-        #COMPUTE ALL of the deconvolution in FREQ DOMAIN instead of time domain
-        Xcorr = np.fft.fft(rec)*np.conj(np.fft.fft(gen))
-        Acorr = np.fft.fft(gen)*np.conj(np.fft.fft(gen))
+        #COMPUTE ALL of the deconvolution in FREQ DOMAIN instead of time domain, should be faster
+        #for noise at output (receiver)
+        Sab = np.conj(np.fft.fft(gen))*np.fft.fft(rec)
+        Saa = np.conj(np.fft.fft(gen))*np.fft.fft(gen)
+        #for noise at input (source) which is more rare
+        ##Sbb = np.conj(np.fft.fft(rec))*np.fft.fft(rec)
+        ##Sba = np.conj(np.fft.fft(rec))*np.fft.fft(gen)
+        
         #f = np.fft.fftfreq(len(gen),d=1/fs)
     
     if wiener == True:
@@ -97,13 +116,20 @@ def IR(rec,gen,fs,wiener=False,domain='f'):
         #Wiener Deconvolution deals with the near zero values which cause processing noise
         #and high frequency aliasing.
         lamb = 0.005 #scaling parameter arbitrarily chosen 
-        sigma = lamb*np.mean(np.abs(Acorr)) #expectation or noise or SNR
-        WDeconv = np.conj(Acorr)*Xcorr/(np.abs(Acorr)**2+sigma**2)
+        #for noise at output (receive)
+        sigma = lamb*np.mean(np.abs(Saa)) #expectation or noise or SNR
+        WDeconv = np.conj(Saa)*Sab/(np.abs(Saa)**2+sigma**2)
+        #for noise at input (source)
+        ##sigma = lamb*np.mean(np.abs(Sba)) #expectation or noise or SNR
+        ##WDeconv = np.conj(Sba)*Sbb/(np.abs(Sba)**2+sigma**2)
         Deconv = WDeconv
     else: 
         print('Performing deconvolution via direct division in frequency domain')
         #Perform standard deconvolution by direct division in frequency domain. 
-        Deconv = Xcorr/Acorr
+        #for noise at output (receive)
+        Deconv = Sab/Saa
+        #for noise at input (source)
+        ##Deconv = Sbb/Sba
         
     #bring back to time domain with inverse fast fourier transform (IFFT)
     ht = np.real(np.fft.ifft(Deconv)) #ensure real valued as it should be
