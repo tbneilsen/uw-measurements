@@ -17,18 +17,18 @@ Last updated 6/14/2021
 """
 import ESAUdata as data
 import byuarglib as byu
-import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.pylab as pylab
 import ESAUResponse as res
-params = {'legend.fontsize': 15,
+import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 24,
           'figure.figsize': (15, 10),
-         'axes.labelsize': 24,
-         'axes.titlesize':28,
+         'axes.labelsize': 28,
+         'axes.titlesize':29,
          'axes.titleweight':'bold',
-         'xtick.labelsize':'xx-large',
-         'ytick.labelsize':'xx-large',
-         'lines.linewidth':2}
+         'xtick.labelsize':24,
+         'ytick.labelsize':24,
+         'lines.linewidth':3}
 pylab.rcParams.update(params)
 
 
@@ -231,7 +231,7 @@ if noises == True:
     plt.grid()
 
 
-plt.figure()
+"""plt.figure()
 plt.plot(Fiss,FRFi_dB,linewidth=6)
 plt.plot(fss,Hss_dB,'--',linewidth=3)
 if convert == 1000:
@@ -262,4 +262,26 @@ if noises == True:
     plt.legend(['Deconvolved Frequency Response','Simulated Frequency Response'])
     plt.grid()
     buffer_limit = f_1+(f_1-f_0)*0.01
-    #plt.xlim(f_0-buffer_limit,f_1+buffer_limit)
+    #plt.xlim(f_0-buffer_limit,f_1+buffer_limit)"""
+
+
+
+"""
+COULD USE THIS TO TEST OUT T60meas IF I COULD MAKE THE SIGNAL APPEAR REVERBERANT"""
+import TankCharacterization as tank
+tbound = tank.T60meas_bounds(hsysn,fs)
+T60 = tank.T60meas(hsysn,fs,tbound[0],tbound[1],d=0.5,c=1478,rt='T60',plot=True)
+
+"""octData,OctFreq = tank.OctaveFilter(hsysn,f_0,f_1,fs,frac=3)
+octTrans = np.transpose(octData)
+
+plt.figure()
+for i in range(len(OctFreq)):
+    plt.plot(octData[i,:])
+plt.title('IR Octave Band')
+
+for i in range(len(OctFreq)):
+    tbound = tank.T60meas_bounds(octData[i,:],fs)
+    T60 = tank.T60meas(octData[i,:],fs,tbound[0],tbound[1],d=0.5,c=1478,rt='T60',plot=True)
+"""
+

@@ -4,9 +4,17 @@ Created on Wed Feb  5 19:50:24 2020
 
 Code developed for basic characterization of the tank environment. 
 Including:
-T60 estimation, schroeder frequency estimation, estimated need of trailing zeros,
-propagation absorption coefficient, T60 measured from h(t), absorption coefficient 
-of walls in tank from T60, Tank eigenmodes and Tank eigenfunctions
+Fractional octave band filtering
+T60 estimation and schroeder frequency estimation
+Minimum trailing zeros estimation
+Propagation absorption coefficient
+Applet for determining time bounds for T60 measurement
+T60 measured from h(t)
+Absorption coefficient of walls in tank from T60 
+Absorption coefficient of material added to the tank
+Tank eigenmodes
+Tank eigenfunctions
+A finite-impedance boundary modal model following Pierce
 
 
 
@@ -27,8 +35,8 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     fs:         float;
                 Sampling frequency of the data
     frac:       float, Optional;
-                Bandwidth fraction. Examples: 1/3-octave frac=3, 1-octave frac=1 (Default), 
-                2/3-octave frac=3/2.
+                Bandwidth fraction. Examples: 1/3-octave frac=3, 1-octave frac=1 
+                (Default), 2/3-octave frac=3/2.
     order:      Int, Optional;
                 Order of the filter. Defaults to 5. 
     exact:      boolean;
@@ -39,9 +47,10 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     Returns
     -------
     filt_data:  Ndarray;
-                2-d array of the bandpass filtered data. Row dimensions = same dimensions as mid_bands. 
-                Each row is the data for a given band. The column dimensions are the filtered data.
-                Ex) filt_data[0,:] would be all of the data for the first mid-band frequency. 
+                2-d array of the bandpass filtered data. Row dimensions = same 
+                dimensions as mid_bands. Each row is the data for a given band. 
+                The column dimensions are the filtered data. Ex) filt_data[0,:] 
+                would be all of the data for the first mid-band frequency. 
                 
     mid_bands:  Ndarray of float;
                 Array of octave or fractional octave frequencies
@@ -61,7 +70,8 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     References:
     https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
     
-    https://github.com/jmrplens/PyOctaveBand/blob/43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
+    https://github.com/jmrplens/PyOctaveBand/blob/
+    43e65e6cfc50d0b079383fee7ba0693cd645c350/PyOctaveBand.py#L14
     
     TDOTOspec.m by Dr. Kent Gee at BYU, found in BYU Acoustics  
     under General Signal Processing/src/Analyzing Spectra
@@ -176,7 +186,7 @@ def OctaveFilter(data,f0,f1,fs,frac = 1,order = 5,exact = True):
     return filt_data, mid_bands
 
 
-def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
+def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0):
     """
     Parameters
     ----------
@@ -190,7 +200,7 @@ def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
                 (rough avg. in tank).
     zi:         float, Optional;
                 Acoustic impedance of side walls. Defaults to acoustic impdedance 
-                of acrylic, accepted as 3.26E6 Ns/m**-3 from the following source:
+                of acrylic, accepted as 3.26E6 Ns/m**3 from the following source:
                 https://www.ndt.net/links/proper.htm 
     ai:         float or ndarray of float, Optional;
                 Absorption coefficient of tank walls. Defaults to 0 which ignores
@@ -211,11 +221,11 @@ def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
                     Estimate of the reverberation time (T60) in seconds. 
                     i.e. time it takes for the signal to drop by 60dB
     sigL:           float;
-                    minimum excitation signal length (s) required by T60 based on Gemba
-                    recommendation for 5-10x length of T60. This gives 10x. 
+                    minimum excitation signal length (s) required by T60 based on 
+                    Gemba recommendation for 5-10x length of T60. This gives 10x. 
     fschroeder:     float;
-                    Schroeder Frequency (Hz). The lowest frequency of interest in which 
-                    the tank is large.
+                    Schroeder Frequency (Hz). The lowest frequency of interest 
+                    in which the tank is large.
     
 
     Notes
@@ -254,8 +264,8 @@ def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
     S = A_acrylic +A_waterair #total surface area of (semi)absorptive boundaries
     
     #estimate absorption coefficients for boundaries
-    zw = 1.5E6 #accepted acoustic impedance of water in Ns/m**-3
-    za = 415 #accepted acoustic impedance of air in Ns/m**-3
+    zw = 1.5E6 #accepted acoustic impedance of water in Ns/m**3
+    za = 415 #accepted acoustic impedance of air in Ns/m**3
     alpha_acrylic = 1-np.abs((zw-zi)/(zw+zi))
     alpha_air = 1-np.abs((zw-za)/(zw+za)) 
     Aw = alpha_air*A_waterair/S #water absorption coefficient spatially averaged
@@ -264,17 +274,17 @@ def T60est(d,c = 1478,zi= 3.26e6,ai=0,alpha_p=0,wall='acrylic'):
         #using zi (estimated acoustic impedance of walls)
         #Sum of alpha*A/S found in eq. 3.4.1 of Gemba
         #Absorption can be more thoroughly estimated using Physcs 661 notes. 
-        Ai = alpha_acrylic*(A_acrylic)/S #acrylic absorption coefficient spatially averaged
+        Ai = alpha_acrylic*(A_acrylic)/S #acrylic absorp coeff spatially averaged
         Absorb = Aw + Ai #spatially averaged Absorption Coefficient
     else:
         #using ai (estimated acoustic absorption coefficient of walls) 
         Awall = ai*(A_acrylic-A_floor)/S
-        Ai = alpha_acrylic*(A_floor)/S #acrylic absorption coefficient spatially averaged
+        Ai = alpha_acrylic*(A_floor)/S #acrylic absorp coeff spatially averaged
         Absorb = Aw + Ai + Awall #spatially averaged Absorption Coefficient
         
-    #Eyring equation found in 661 notes eq. 4-24.124(reducing to 4-2.4.116 when alpha_p=0)
+    #Eyring equation (661 notes eq. 4-24.124(reduce to 4-2.4.116 when alpha_p=0))
     T60 = (24*np.log(10)/c) * (V/(8*alpha_p*V - S*np.log(1-Absorb)))
-    fschroeder = 0.6*np.sqrt(c**3*T60/V)
+    fschroeder = np.sqrt(c**3*T60/(V*4*np.log(10))) #Pierce eq6.6.4
     signal_length = 10*T60
     sigL = signal_length
     
@@ -360,7 +370,8 @@ def trailzeros(RT,sigL,fstart,fstop,f = None,R = 60,sig = 'lin') :
         l = texp + (20 + R)/60*RT
         #eq 25 determine the stop margine or time of trailing zeros for the 
         #signal (l = total signal duration, sigL = time of sweep design)
-        tstop = ((20+R)/60*texp*np.log(fstop/fstart) - l *np.log(fstop/f))/np.log(f/fstart)
+        tstop = ((20+R)/60*texp*np.log(fstop/fstart) \
+                 - l *np.log(fstop/f))/np.log(f/fstart)
     
     tls = l
     print(sigL)
@@ -372,7 +383,7 @@ def trailzeros(RT,sigL,fstart,fstop,f = None,R = 60,sig = 'lin') :
 
 
 
-def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
+def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.6):
     """
     Absorption Coefficient from Propagation losses through Sea Water
     
@@ -390,15 +401,15 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
             pH level of the water. Defaults to 7.7 (though this is high relative
             to the test strips and a normal pool). Effective for 7.7<pH<8.3
     depth:  float, Optional;
-            depth of water in km. Defaults to 0.0006 km or 0.6m. Which will 
+            depth of water in km. Defaults to 0.6m or 0.0006 km. Which will 
             make that term in the function negligible as basically zero. 
-            Effective for 0<z<7 km. 
+            Effective for 0<z<7000m or 0<z<7 km. 
     
     Returns
     -------
     a_p:    ndarray of float;
             absorption coefficient if sound (alpha) for propagation 
-            losses through the water. 
+            losses through the water. (Np/m or Nepers/m)
     
     Notes
     -----
@@ -407,8 +418,8 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     Primarily due to viscous effects above 100kHz (high), but also due to 
     Chemical relaxation of Boric Acid up to a few kHz (low), Chemical 
     relaxation of Magnesium Sulfate up to a few 100kHz (mid). This formulation 
-    comes from Ainslie & McColm 1997 - "A simplified formula for viscous and
-    chemical absorption in sea water" Published in JASA 103 equation 2 & 3.
+    comes from Francois & Garrison 1982 Part1 and Part2 published in JASA
+    Vol 72 No.3 and No.6 December 1982. See Specifically Fig. 7 Part 2
     
     Can apply this in propagation models similar to account for thermoviscous
     molecular losses.
@@ -418,15 +429,32 @@ def alpha_prop(f,T=16,S=5,pH=7.7,depth=0.0006):
     last modified 9/1/2021      
     """
     import numpy as np
-    #relaxation frequency for boron
-    f1 = 0.78*(S/35)**0.5*np.exp(T/26)
-    #relaxation frequency for magnesium
-    f2 = 42*np.exp(T/17)
-    
-    term1 = 0.106*(f1*f**2)/(f**2+f1**2)*np.exp((pH-8)/0.56)
-    term2 = 0.52*(1+T/43)*(S/35)*(f2*f**2)/(f**2+f2**2)*np.exp(-depth/6)
-    term3 = 0.00049*f**2*np.exp(-(T/27 + depth/17))
-    a_p = term1 + term2 + term3 
+    f = f/1000 #convert freq input to kH
+    c = 1412+3.21*T+1.19*S+0.0167*depth #m/s
+    #boric acid term
+    f1 = 2.8*(S/35)**0.5 *10**(4-1245/(T+273.1)) #kHz
+    A1 = 8.86/c*10**(0.7*pH-5)
+    P1 = 1 #pressure correction for boric acid not found important
+    term1 = A1*P1*f1*f**2/(f1**2+f**2)
+    #magnesium sulfate term
+    f2 = 8.17*10**(8-1990/(T+273.1)) #kHz
+    A2 = 21.44*S/c*(1+0.025*T) #dB/km/kHz
+    P2 = 1 - 1.37e-4*depth + 6.2e-9*depth**2
+    term2 = A2*P2*f2*f**2/(f2**2 + f**2)
+    #pure water term
+    if T <= 20:
+        A3 = 4.937e-4 - 2.59e-5*T + 9.11e-7*T**2 - 1.5e-8*T**3 #dB/km/kHz**2
+    else: 
+        A3 = 3.964e-4 - 1.146e-5*T + 1.45e-7*T**2 - 6.5e-10*T**3 #dB/km/kHz**2
+    P3 = 1 - 3.83e-5*depth + 4.9e-10*depth**2    
+    term3 = A3*P3*f**2 #pure water term
+    #print(f'Boron term={term1} in dB/km')
+    #print(f'Magnesium term={term2} in dB/km')
+    #print(f'Pure Water term={term3} in dB/km')
+    a_p = (term1 + term2 + term3) 
+    #Original function returns solution in dB/km
+    #convert dB/km to Np/m (Nepers/meter)
+    a_p = a_p/1000 *0.115129254650564 
     return a_p
 
 
@@ -454,7 +482,8 @@ def T60meas_bounds(data,fs):
     
     Utilize a pop up graph to view the 10log10(h(t)**2) of an input impulse 
     response or h(t). This allows you to choose the appropriate time bounds 
-    to perform the reverse Schroeder integration on the impulse response h(t). 
+    to perform the reverse Schroeder integration on the impulse response h(t)
+    according to ISO354:2003, ISO3382-1:2009, ISO3382-2:2008 standards. 
     
     *****Because of the conditional statement in updatePlot(), the statement: 
     "l1=None" must remain before this function. This simply initializes l1 
@@ -476,7 +505,8 @@ def T60meas_bounds(data,fs):
     
     #import necessary packages for use in GUI and plotting
     import tkinter
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
     # Implement the default Matplotlib key bindings.
     from matplotlib.backend_bases import key_press_handler
     from matplotlib.figure import Figure
@@ -484,7 +514,8 @@ def T60meas_bounds(data,fs):
     #Setup the main window for the GUI    
     root = tkinter.Tk()
     root.wm_title("Check h(t)**2")
-    label = tkinter.Label(root, text="Impulse Response Squared in dB", font=LARGE_FONT)
+    label = tkinter.Label(root, text="Impulse Response Squared in dB", 
+                          font=LARGE_FONT)
     label.pack(pady=10,padx=10)
     #Create a figure to plot
     import numpy as np
@@ -497,8 +528,8 @@ def T60meas_bounds(data,fs):
     ht = np.clip(data,floor,(np.max(data)+floor)) #data w/out zeros
     b = 10*np.log10((np.abs(ht))**2)
     #Plot initial data
-    fig.suptitle("Choose a Time Interval (t1 to t2) for Reverse Schroeder Integration."+
-                 "This should be where the plot is most linear.")
+    fig.suptitle("Choose a Time Interval (t1 to t2) for Reverse Schroeder" 
+                 +"Integration. This should be where the plot is most linear.")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Level (dB)")
     ax.plot(t,b)
@@ -547,12 +578,15 @@ def T60meas_bounds(data,fs):
     #Create a toolbar for the GUI including ability to save plot. 
     toolbar = NavigationToolbar2Tk(canvas, root)
     toolbar.update()
-    canvas.mpl_connect("key_press_event", lambda event: print(f"you pressed {event.key}"))
+    canvas.mpl_connect("key_press_event", lambda event: print(
+            f"you pressed {event.key}"))
     canvas.mpl_connect("key_press_event", key_press_handler)
     
     #Create buttons for control in GUI
-    run_button = tkinter.Button(root,text="Run T60meas",command=lambda: Reverb(root.in1.get(),root.in2.get()))
-    check_button = tkinter.Button(root,text="Check",command=lambda: updatePlot(root.in1.get(),root.in2.get()))
+    run_button = tkinter.Button(root,text="Run T60meas",command=lambda: Reverb(
+            root.in1.get(),root.in2.get()))
+    check_button = tkinter.Button(root,text="Check",command=lambda: updatePlot(
+            root.in1.get(),root.in2.get()))
     
     # Packing order for Widgets are processed sequentially.
     # The canvas is rather flexible in its size, so we pack it last which makes
@@ -625,24 +659,24 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     import matplotlib.pyplot as plt
     import matplotlib.pylab as pylab
     from scipy import stats
-    params = {'legend.fontsize': 15,
+    params = {'legend.fontsize': 24,
               'figure.figsize': (15, 10),
-             'axes.labelsize': 24,
-             'axes.titlesize':28,
-             'axes.titleweight':'bold',
-             'xtick.labelsize':'xx-large',
-             'ytick.labelsize':'xx-large',
-             'lines.linewidth':2}
+              'axes.labelsize': 28,
+              'axes.titlesize':29,
+              'axes.titleweight':'bold',
+              'xtick.labelsize':24,
+              'ytick.labelsize':24,
+              'lines.linewidth':3}
     pylab.rcParams.update(params)
     
-    ##avoid log(0) to prevent exploding by clipping all zeros to 0.00001% of of the max
-    ## and go just beyond the max value so as to not clip. 
+    ##avoid log(0) to prevent exploding by clipping all zeros to 0.00001% of 
+    ##the max and go just beyond the max value so as to not clip. 
     floor = np.max(ht)*1e-5 
     ht1 = np.clip(ht,floor,(np.max(ht)+floor)) #data w/out zeros
     
     #Portion of array to actually look at for the T60meas. This is found by
-    #eyeing it (ISO3382-1:2009(E)). Look for just after the 10*np.log10(np.abs(ht)**2) 
-    #is flat in the beginning and just before it is flat in the end (background level).
+    #eyeing it (ISO3382-1:2009(E)). Look just after the 10*np.log10(np.abs(ht)**2) 
+    #is flat in the beg. and just before it is flat in the end (background level).
     t0 = int(t0*fs) #convert to samples
     t1 = int(t1*fs) #convert to samples
     ht1 = ht1[t0:t1] 
@@ -685,7 +719,8 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
     check_actual = (sch_init - sch_end +5)
     check_bounds = (init-end)
     if check_actual < check_bounds:
-        raise ValueError(f"Decay not large enough for {rt} measurement. Choose smaller rt value.")
+        raise ValueError(f"Decay not large enough for {rt} measurement."
+                         +"Choose smaller rt value.")
         
     #indices of where the decay curve matches the init and end condition
     init_sample = np.where(schroeder_dB == sch_init)[0][0]
@@ -715,13 +750,14 @@ def T60meas(ht,fs,t0,t1,d=0.6,c=1478,rt='T60',plot=False):
         plt.plot(t,(schroeder_dB + maxval))
         plt.legend([r'$10log[h^{2}(t)]$','Decay Curve'])
         est,_,_ = T60est(d,c)
-        plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms, T60est={np.around(est*1000,decimals=2)}ms')    
+        plt.title(f'T60meas={np.around(T60*1000,decimals=2)}ms,' 
+                             +f'T60est={np.around(est*1000,decimals=2)}ms')    
     
     return T60
 
 
 
-def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
+def alpha_wall(T60,d=0.6,c=1478,acc=False,alpha_p=0):
     """
     Calculate the spatially averaged absorption coefficient of the walls of the
     tank based on the measured T60 of the tank (either averaged or over freq)
@@ -744,11 +780,6 @@ def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
                 the overall spatially averaged absorption coefficient. If True, 
                 then the spatially averaged absorption coefficient that is returned
                 only accounts for the walls and the floor of the enclosure. 
-    anech:      boolian, Optional;
-                Defaults to False to calculate with no anechoic panels in the tank. 
-                If true, the calculation takes into account the thickness of the 
-                panels on the inner dimensions of the tank environment for the 
-                calculation of the spatially averaged absorption coefficient.
     alpha_p:    float or ndarray of float, Optional;
                 Absorption coefficient due to thermoviscous molecular propagation
                 losses. Defaults as 0 such that there is no propagation absorption.
@@ -759,8 +790,9 @@ def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
     Returns
     -------
     alpha_S:    float;
-                Estimated spatially averaged absorption coefficient for the
-                room based on the measured T60 and the Eyring Equation.  
+                Estimated spatially averaged absorption coefficient 
+                (Nepers/m**2) for the room based on the measured T60 and the 
+                Norris-Eyring Equation.  
     
     Notes
     -----
@@ -769,32 +801,87 @@ def alpha_wall(T60,d=0.6,c=1478,acc=False,anech=False,alpha_p=0):
     Calculate the spatially averaged absorption coefficient of the tank boudaries
     from the measured T60 in the tank. 
     
+    This assumes that the incident energy per unit time and area is the same for 
+    all wall surfaces at any given time. If one of the consituent areas S1 has 
+    an absorption coefficient alpha1 that is substantially different than the 
+    coefficient alpha0 of the remaining surface area S-S1, this assumption 
+    becomes questionable. See 661 notes section 4-2.4.2.4 (Rooms with 
+    asymmetric or nonuniform absorption).
     
-    last modified 5/18/2021      
+    
+    last modified 10/21/2021      
     """
     import numpy as np
     #dimensions of tank
     Lx = 1.22   #width of tank (m) 
     Ly = 3.66   #length of tank (m)
-    #Alter the dimensions relative to the thickness of the anechoic panels
-    if anech == True:
-        Lx = Lx - 2*0.05
-        Ly = Ly - 2*0.05
-        print('Calculating absorption coeff. w/ respect to anechoic panels')
     V = Lx*Ly*d #volume relative to current water depth
+    S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
     
     if acc == True:
-        S = 2*(Ly*d+d*Lx)+Lx*Ly #total enclosed surface area minus air-water surface
-        print('Calculating absorption coeff. w/ respect to walls only')
+        #account for perfectly reflective water-air boundary
+        print('Calc. absorp. assuming pressure-release water-air (reflective)')
+        Aw = 0
     else: 
-        S = 2*(Lx*Ly+Ly*d+d*Lx) #total enclosed surface area including air-water
-        print('Calculating absorption coeff. w/ respect to water surface & walls')
+        print('Calc. absorption w/ respect to small surface absorption')
+        #account for slight impedance water-air boundary
+        #estimate absorption coefficients for boundaries
+        zw = 1.5E6 #accepted acoustic impedance of water in Ns/m**3
+        za = 415 #accepted acoustic impedance of air in Ns/m**3
+        alpha_air = 1-np.abs((zw-za)/(zw+za)) 
+        Aw = alpha_air*Lx*Ly/(S) #water absorption coefficient spatially averaged    
+        
     #solving Eyring equation w/propagation loss found in 661 notes eq 4-2.4.124
-    #with default of alpha_p=0 this simplifies to eq. 4-2.4.116
+    #with default of alpha_p=0 this simplifies to eq. 4-2.4.116.
     alpha_S = 1-np.exp(V/S*(8*alpha_p - (24*np.log(10))/(c*T60)))
     
-    return alpha_S
+    #Account for the absorption of the water-air surface boundary while 
+    #assuming that the incident energy per unit time and area is the same for 
+    #all wall surfaces at any given time. (This does not apply asymmetric correction)
+    A = alpha_S*S - Aw
+    alpha_S = A/S
+    return alpha_S 
 
+def alpha_addition(ai,T60_1,T60_2,dS,d,c=1478):
+    """
+    Determine the absorption coefficient of any added material in the tank by
+    comparison of a pre and post T60 measurement. This is performed by solving 
+    for the change in absorptive area A between two measurements using the 
+    Sabine equation. (Solving this for the Eyring Eq. may be a better idea)
+    
+    Parameters
+    ----------
+    ai:         float;
+                Measured or estimated absorption of tank acrylic walls that are
+                being covered by input material
+    T60_1:      float;
+                Measured reverbeation time in seconds of the tank prior to 
+                application of new material into the tank. 
+    T60_2:      float;
+                Measured reverbeation time in seconds of the tank post  
+                application of new material into the tank.
+    dS:         float;
+                Effective change in surface area (m**2) of the tank boundaries 
+                due to application of new material. 
+    d:          float;
+                Depth of the water in m
+    c:          float, Optional;
+                Speed of sound in m/s. Defaults to 1478 m/s
+    
+    Returns:
+    alpha_add:  float;
+                Measured absorption (Nepers) of material input into the tank 
+                based on reverberation time prior to placing new material.
+        
+    """
+    import numpy as np
+    #dimensions of tank
+    Lx = 1.22   #width of tank (m) 
+    Ly = 3.66   #length of tank (m)
+    V = Lx*Ly*d #volume relative to current water depth
+    #661 eq 4-2.4.90 & 4-2.4.91 generalized for any sound speed
+    alpha_add = ai+24*np.log(10)*V/(c*dS)*(1/T60_2 - 1/T60_1) 
+    return alpha_add
 
 def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478):
     """
@@ -852,8 +939,10 @@ def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478):
     import numpy as np
     #Perfectly rigid wall solution
     print('Solving for natural frequencies assuming perfectly Rigid walls')
-    #rigid wall solution for natural frequencies & Pressure release surface(nz component)
-    fN = lambda nx,ny,nz: c/(2)*np.sqrt((nx/Lx)**2 + (ny/Ly)**2 + ((2*nz-1)/(2*Lz))**2)
+    #rigid wall solution for natural frequencies & 
+    #Pressure release surface(nz component)
+    fN = lambda nx,ny,nz: c/(2)*np.sqrt((nx/Lx)**2 + (ny/Ly)**2 + (
+            (2*nz-1)/(2*Lz))**2)
     #create empty lists to populate
     mode = []
     f = []
@@ -875,7 +964,8 @@ def TankMode(perm=10,fmin=0,fmax=1000,Lx=1.22,Ly=3.66,Lz=0.6,c=1478):
                 
     f = np.array(f)
     mode = np.array(mode)
-    idxs = np.argsort(f) #order all the frequencies & associated modes in numerical order of freq.
+    #order all the frequencies & associated modes in numerical order of freq.
+    idxs = np.argsort(f) 
     f = f[idxs]
     mode = mode[idxs]
     print(f'{len(f)} frequencies recorded in range {fmin}<=f<={fmax}')
@@ -940,8 +1030,10 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
     last modified 4/7/2021      
     """
     import numpy as np
-    #Eigen-Function for rectangular tank assuming rigid walls and pressure release water-air interface
-    Psi = lambda nx,ny,nz :np.cos(nx*np.pi*x/Lx) * np.cos(ny*np.pi*y/Ly) * np.cos((2*nz-1)*np.pi*z/(2*Lz))
+    #Eigen-Function for rectangular tank assuming rigid walls and pressure release 
+    #water-air interface
+    Psi = lambda nx,ny,nz :np.cos(nx*np.pi*x/Lx) * np.cos(ny*np.pi*y/Ly) * np.cos(
+            (2*nz-1)*np.pi*z/(2*Lz))
     
     psi = []
     print('')
@@ -952,12 +1044,23 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
 
     
     if len(x) > 1:
-        ################################################################################
-        #The rest of this function is solely for contour plotting the Eigenfunctions psi
-        ################################################################################
+        ##########################################
+        #The rest of this function is solely for #
+        #contour plotting the Eigenfunctions psi #
+        ##########################################
         if plot == True:
             print(f'plotting first {num} EigenFunctions')
             import matplotlib.pyplot as plt
+            import matplotlib.pylab as pylab
+            params = {'legend.fontsize': 24,
+                      'figure.figsize': (15, 10),
+                     'axes.labelsize': 28,
+                     'axes.titlesize':29,
+                     'axes.titleweight':'bold',
+                     'xtick.labelsize':24,
+                     'ytick.labelsize':24,
+                     'lines.linewidth':3}
+            pylab.rcParams.update(params)
             #number of modes we are interested in contour plotting
             start = 0   #zeroeth mode 0, 0, 0 is weird?. 
             #modes and frequencies of interest
@@ -972,7 +1075,7 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
             x,y = np.meshgrid(x,y)
             for i in range(len(modeint)):
                 psi1 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
-                #check to see if mode actually present in this plane, if not, do not plot
+                #check if mode actually present in this plane, if not, do not plot
                 check =np.ones((len(x),len(y)))
                 if np.any(psi1 != check) == True:
                     fig,ax=plt.subplots(1,1)
@@ -982,7 +1085,8 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
                     else: 
                         cb = ax.contourf(x,y,psi1)
                         fig.colorbar(cb)
-                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where Z={z}m')
+                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz'
+                                    + f'where Z={z}m')
                     ax.set_xlabel('X (m)')
                     ax.set_ylabel('Y (m)')
                     plt.show()
@@ -998,7 +1102,7 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
             for i in range(len(modeint)):
                 #iterate through calculating each eigenfunction
                 psi2 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
-                #check to see if mode actually present in this plane, if not, do not plot
+                #check if mode actually present in this plane, if not, do not plot
                 check =np.ones((len(x),len(z)))
                 if np.any(psi2 != check) == True:
                     fig,ax=plt.subplots(1,1)
@@ -1008,7 +1112,8 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
                     else:
                         cb = ax.contourf(x,z,psi2)
                         fig.colorbar(cb)
-                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where Y={y}m')
+                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz' 
+                                    + f'where Y={y}m')
                     ax.set_xlabel('X (m)')
                     ax.set_ylabel('Z (m)')
                     plt.show()
@@ -1024,7 +1129,7 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
             for i in range(len(modeint)):
                 #iterate through calculating each eigenfunction
                 psi3 = Psi(modeint[i,0],modeint[i,1],modeint[i,2])
-                #check to see if mode actually present in this plane, if not, do not plot
+                #check if mode actually present in this plane, if not, do not plot
                 check =np.ones((len(y),len(z)))
                 if np.any(psi3 != check) == True:
                     fig,ax=plt.subplots(1,1)
@@ -1034,17 +1139,28 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
                     else:    
                         cb = ax.contourf(y,z,psi3)
                         fig.colorbar(cb)
-                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)} Hz where X={x}m')
+                    ax.set_title(f'{modeint[i,:]} Mode f={np.round(fint[i],2)}' 
+                                    + f'Hz where X={x}m')
                     ax.set_xlabel('Y (m)')
                     ax.set_ylabel('Z (m)')
                     plt.show()
                 else: 
                     print('undesired mode not plotted in y-z')
     else:
-        #not sure exactly what this plot physically means, but I have it here for now. 
-        #might need to change this to default to not plotting if singular value is input.
+        #not sure what this plot physically means, but I have it here for now. 
+        #might need to change default to not plotting if singular value is input.
         if plot == True:
             import matplotlib.pyplot as plt
+            import matplotlib.pylab as pylab
+            params = {'legend.fontsize': 24,
+                      'figure.figsize': (15, 10),
+                     'axes.labelsize': 28,
+                     'axes.titlesize':29,
+                     'axes.titleweight':'bold',
+                     'xtick.labelsize':24,
+                     'ytick.labelsize':24,
+                     'lines.linewidth':3}
+            pylab.rcParams.update(params)
             plt.figure()
             plt.plot(f,psi)
             plt.xlabel('Frequency (Hz)')
@@ -1057,7 +1173,8 @@ def TankFunc(x,y,z,f,mode,Lx=1.22,Ly=3.66,Lz=0.6,plot=True,pstyle='colored',num=
 
 
 
-def P_model_Pierce(Psi0,Psi,k,kn,mode,alpha,d=0.6,A=1,acc=False,anech=False,alpha_p=0):
+def P_model_Pierce(Psi0,Psi,k,kn,mode,alpha,d=0.6,A=1,acc=False,anech=False,
+                   alpha_p=0):
     """
     Parameters
     ----------
