@@ -227,6 +227,6 @@ plt.legend()
 plt.ylim(1470,1515)
 #plt.show()
 SAVE_FOLDER = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-11'
-save_name = 'speed_of_sound_in_tank.png'
+save_name = 'speed_of_sound_in_tank_2.png'
 plt.savefig(os.path.join( SAVE_FOLDER, save_name))
 #print(np.mean(c_minus_outlier))

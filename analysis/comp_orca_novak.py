@@ -1,4 +1,3 @@
-#%%
 import logging
 import os
 
@@ -42,17 +41,17 @@ def main():
         orca = ORCA(base_svp=full_file, base_opt = OPT_FILE)
 
         # set transmission loss source depth (in m)
-        src_depth = np.linspace(0.25,0.35,3)   
+        src_depth = [0.25]   
         # set receiver depth(s) in m
-        rec_depth = np.linspace(0.25,0.35,3)
+        rec_depth = [0.25]
         # set the frequencies in Hz
-        freqs = [10000.0,30000.0,50000.0,80000.0,100000.0]#[10000.0,20000.0,30000.0,40000.0,50000.0,60000.0,70000.0,80000.0,90000.0,100000.0]
+        freqs = np.linspace(10000.0,50000.0,80001) # df of 0.5 Hz
 
         # set depths at which mode functions should be defined
         mode_depth = np.append(src_depth, rec_depth)
 
         # set ranges in m
-        ranges = np.linspace(0.3, 1.3, 15)
+        ranges = [0.3]
         #ranges_mirror = np.append(-1*np.flip(ranges),ranges)
 
         # set the source depth for the tl calculation
@@ -80,42 +79,16 @@ def main():
             )
         
         # tl[src_depth, rec_depth, range, frequency]
-        
-        for iif, f in enumerate(freqs):
-            plt.figure()
-            tl_range_depth = tl[0,:,:,iif]
-            #tl_mirror = np.zeros((len(tl_range_depth[:,0]),2*len(tl_range_depth[0,:])))
-            #for i in range(len(tl_mirror[:,0])):
-                #tl_mirror[i] = np.append(np.flip(tl_range_depth[i]),tl_range_depth[i])
-            plt.pcolormesh(ranges,rec_depth,tl[0,:,:,iif],\
-                    label = "calc TL " + str(f) + " Hz") # Calc TL
-            plt.gca().invert_yaxis
-            plt.xlabel('Range, m')
-            plt.ylabel("Depth, m")
-            plt.title('Transmission Loss Density Plot\
-                \nSource Depth: ' + str(src_depth[0]) + ' m' +\
-                '\nFrequency: ' + str(f) + ' Hz' +\
-                    '\n' + testfile[:-5])
-            plt.colorbar(label = 'TL', orientation = 'horizontal')
-            plt.clim(-40,50)
-            plt.gcf().tight_layout()
-            save_name = 'orca_' + 'tl_density' + '@freq_' + str(f) + 'Hz_and_src_depth_' + str(src_depth[0]) + '_' + testfile[:-5] + '.png'
-            #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
-        #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
-        
-        
-    '''
-    ORCA_dict = {'frequency':freqs,'transmission loss':tl,'ranges':ranges,'rec_depth':rec_depth}
-    filename = 'tl_array'
+
+    ORCA_dict = {'frequency':freqs,'transmission loss':tl[0,0,0,:]}
+    filename = 'orca_tl_src&rec_depth_0.25m'
     outfile = open(filename,'wb')
     pickle.dump(ORCA_dict,outfile)
     outfile.close()
-    '''
-
+    
 if __name__ == "__main__":
 
     logging.basicConfig(
         format='%(levelname)-8s %(asctime)s %(name)-8s %(module)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.DEBUG)
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
     main()
-# %%

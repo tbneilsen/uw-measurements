@@ -80,6 +80,7 @@ layers = [
 #     h  cp1 cp2  cs1 cs2  rho1 rho2  ap1 ap2  as1 as2     g ctol
 # just make sure that each object in the list contains the elements requested
 # by the type.
+
 # This is the acrylic info: 'https://www.ndt.net/links/proper.htm'
 type = "linear"
 h = 0.03

@@ -4,6 +4,16 @@ import os
 import pickle
 
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+params = {'legend.fontsize': 24,
+          'figure.figsize': (15, 10),
+         'axes.labelsize': 28,
+         'axes.titlesize':29,
+         'axes.titleweight':'bold',
+         'xtick.labelsize':24,
+         'ytick.labelsize':24,
+         'lines.linewidth':3}
+pylab.rcParams.update(params)
 import numpy as np
 import matplotlib.gridspec as gridspec
 
@@ -67,11 +77,19 @@ path14 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-03/
 
 path15 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-10-15/2021-10-15_scan2' # 100 kHz 150 points steady state
 
-path_used = path15
+path16 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan3' # 100 kHz 150 points short sine wave
+
+path17 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan4' # 71 kHz 150 points long sine wave
+path18 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan5' # 82 kHz 150 points long
+path19 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan8' # 115 kHz 150 points long
+path20 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan9' # 133 kHz 150 points long
+path21 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan10' # 200 kHz 150 points long
+
+path_used = path16
 freqs = [100000.0]
 desire = [i for i in range(150)]
 channel = [0,1]
-c = 1478
+c =1486
 
 _,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
 A, R, dd = ESAUpose(path_used,desire)
@@ -100,7 +118,7 @@ gated_rec_sig = np.zeros((N,len(desire)))
 for i in desire:
     gated_rec_sig[:,i] = TG.gatefunc(rec_sig[:,i],fs,tside[i],leading,0.1)
 
-
+'''
 ns = 2**15
 unitflag = 0
 pref = 1e-6
@@ -109,34 +127,35 @@ Gxx = np.zeros((ns//2,len(desire)))
 _, f, _ = autospec(rec_sig, fs, ns, N, unitflag, pref)
 for i in desire:
     Gxx[:,i], _, _ = autospec(rec_sig[:,i], fs, ns, N, unitflag, pref)
-'''
+
 start_freq = 10000
 end_freq = 100000
 rel_Gxx_level, freq_band = freqVsRelTLwithAutospec(Gxx,f,start_freq,end_freq)
-
+'''
 
 from Relative_TL_Tank import calcRelativeTransmissionLoss
 
 rec_start = fs*(tdirect + leading)
+#rec_end = fs*measurement_duration*np.ones(len(tside))
 rec_end = fs*(tside + leading)
 
 rec_start = rec_start.astype('int')
 rec_end = rec_end.astype('int')
 
-rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
-'''
+rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end,desire)
 
+'''
 plusorminus = 50
 freq_index = findIndex(f,freqs[0])
 rel_TL_fft = relOAPSLfft(Gxx,freq_index,plusorminus)
-
+'''
 SHOW_PLOTS = False
 SAVE_PLOTS = True
 
 logger = logging.getLogger(__name__)
 
 SVP_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/orcafiles"
-SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-10"
+SAVE_FOLDER = "/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2021-11"
 
 # Plot TL for differenet frequencies vs which parameter?
 
@@ -243,16 +262,19 @@ def main():
                     plt.figure()
                     # You also need to comment/uncomment out plt.savefig() in or out of loop!!
                     plt.plot(ranges, tl[0,0,:,iif] - tl[0,0,0,iif]*np.ones(len(tl[0,0,:,iif])),\
-                         label = "calc TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
+                         label = 'Orca') #"calc TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # Calc Relative TL
                     # this is where you can plot actual data over the calculated tl
-                    plt.plot(ranges,rel_TL_fft, label = "true TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # true Relative TL
+                    plt.plot(ranges,rel_TL, label = 'measured')#"true TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
-                    plt.ylabel("TL, dB re "+str(round(dd[0],3))+" m") # change re depending on what it's to
+                    plt.ylabel("TL, dB re "+str(round(dd[0],3))+" m") # change re depending on what it's relative to
+                    '''
                     plt.title('Range vs Relative Transmission Loss\
                         \nReciever Depth: ' + str(rec_depth[0]) + ' m' +\
                         '\nFrequency: ' + str(f) + ' Hz' +\
                         '\n' + testfile[:-5] +\
                         '\n Modes: ' + str(nmode)) 
+                    '''
+                    plt.title('Short Sine Wave Time Gated \n '+str(f)+' Hz')
                     plt.grid()
                     plt.legend()
                     plt.gcf().tight_layout()
@@ -260,7 +282,7 @@ def main():
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + 'steady_state.png'
+                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + 'short_gate.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL

@@ -58,8 +58,8 @@ ap = 0
 # sidenote, ALL values in a TOML array must be of the same type, so just add a .0
 
 layers = [
-    [0.0, 1478.0],
-    [0.47, 1478.0]
+    [0.0, 1486.0],
+    [0.47, 1486.0]
 ]
 
 
