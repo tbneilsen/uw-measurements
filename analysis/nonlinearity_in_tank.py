@@ -48,7 +48,7 @@ for i in desire:
     plt.xlim(start + shift[i],end + shift[i])
     plt.xlabel('Time (sec)')
     plt.ylabel('Amplitude (volts)')
-'''
+
 plt.figure()
 plt.title('Checking for Nonlinearity')
 for i in [0,15]:
@@ -60,5 +60,27 @@ plt.ylabel('Amplitude (volts)')
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 save_name = 'nonlinearity_check_time_domain_2points'
 plt.savefig(os.path.join(save_folder, save_name))
+'''
+# now let's look for nonlinearity in the frequency domain
+import sys
+sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/python-general-signal-processing/byuarglib/byuarglib')
+from autospec import autospec
+ns = 2**15
+unitflag = 0
+pref = 1e-6
+Gxx = np.zeros((ns//2,len(desire)))
+_, f, _ = autospec(rec_sig, fs, ns, N, unitflag, pref)
+for i in desire:
+    Gxx[:,i], _, _ = autospec(rec_sig[:,i], fs, ns, N, unitflag, pref)
 
+# plot the frequency domain from 100 kHz to the end
+plt.figure()
+plt.title('Checking for Nonlinearity in Freq Domain')
+plt.xlabel('frequency (Hz)')
+plt.ylabel('dB re 1 microPa')
+plt.xlim(120000,0.4e6)
+plt.ylim(0,0.6e-9)
+for i in [0,15]:
+    plt.plot(f,Gxx[:,i],label = 'SRD: ' + str(round(dd[i],3)) + 'm')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 # %%
