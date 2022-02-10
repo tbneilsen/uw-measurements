@@ -55,5 +55,14 @@ path_chirp = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-09
 # Scan 6:
 # 50k-100k, 729 points
 
-num_scan_sin = '' # the scan number in form of a string. NOTE the bad ones
-num_points_sin = 729 # integer number of positions.
+num_scan_chirp = '' # the scan number in form of a string. NOTE the bad ones
+num_points_chirp = 729 # integer number of positions.
+
+path = path_chirp + num_scan_chirp
+num_points = num_points_chirp
+
+desire = [i for i in range(len(num_points))]
+channels=[0,1]
+_,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path)
+N = int(fs*measurement_duration)
+_,_,_,_,rec_sig,_,_ = ESAUdata(path, desire, channels, N, N)
