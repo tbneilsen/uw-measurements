@@ -90,6 +90,7 @@ def uwsoundspeed(D=0.2,T=16.0,S=0.03,model='Garrett'):
     S:  float, optional;
         salinity where 0.030<= S <=0.042 grams salt per kg H20 (aka parts per
         thousand = ppt)
+        
     Returns
     -------
     c:  float;

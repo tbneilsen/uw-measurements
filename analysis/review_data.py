@@ -2,12 +2,19 @@
 from ESAUdata import ESAUdata
 from ESAUpose import ESAUpose
 from readLogFile import readLogFile
+from TimeGate_UnderwaterTank import uwsoundspeed
 from pathlib import Path
 import numpy as np
 
 from run_uwlib_tl_test import SAVE_FOLDER
 #import antigravity
-
+'''
+D = 1
+T = 1
+S = 0.9
+model = 'Garrett'
+c = uwsoundspeed(D,T,S,model)
+'''
 path = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-10-21/2021-10-26_scan7'
 
 desire = [i for i in range(150)]
@@ -20,16 +27,17 @@ _,_,cal,tegam,rec_sig,_,_ = ESAUdata(path,desire,channels,N,N)
 import matplotlib.pyplot as plt
 plt.figure()
 plt.plot(rec_sig[100000:100100,0])
-plt.show()
+#plt.show()
 plt.figure()
 plt.plot(rec_sig[100000:100100,50])
-plt.show()
+#plt.show()
 plt.figure()
 plt.plot(rec_sig[100000:100100,100])
-plt.show()
+#plt.show()
 plt.figure()
 plt.plot(rec_sig[100000:100100,149])
-plt.show()
+#plt.show()
+
 '''
 plot = False
 Acal = (0.6,2.14,0.25)

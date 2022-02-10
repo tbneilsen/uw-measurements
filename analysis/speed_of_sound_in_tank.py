@@ -1,3 +1,4 @@
+#%%
 import os
 import numpy as np
 from ESAUdata import ESAUdata
@@ -5,7 +6,7 @@ from ESAUpose import ESAUpose
 from readLogFile import readLogFile
 
 path = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-06B/2021-08-06_scan1' # 16 points
-num_points = 16
+num_points = 3
 _,_,_,fs,leading_zeros,_,trailing_zeros,measurementDuration,_,_,_,_,_,_,_ = readLogFile(f'/ID000_001log.txt',path)
 tolerance = 20 # m/s
 N = int(fs*measurementDuration)
@@ -31,18 +32,20 @@ for i in range(len(dd)-1):
     delta_t.append(Tcor[np.argmax(correlation)])
     delta_t_error_min.append(Tcor[np.argmax(correlation)-1])
     delta_t_error_max.append(Tcor[np.argmax(correlation)+1])
+    
+
 
 # We're gonna hardcode i = 1 because correlate is not very good on this point
 i = 1
 correlation = signal.correlate(rec_signal[:,i+1], rec_signal[:,0], mode="full")
-shift = int(fs*Tcor[np.argmax(correlation)])-390
-#plt.figure()
-#plt.plot(rec_signal[int(fs*leading_zeros)+5000+shift:N-int(fs*trailing_zeros)+shift,i+1])
-#plt.plot(rec_signal[int(fs*leading_zeros)+5000:N-int(fs*trailing_zeros),0])
+shift = int(fs*Tcor[np.argmax(correlation)]) #-390
+plt.figure()
+plt.plot(rec_signal[int(fs*leading_zeros)+5000+shift:N-int(fs*trailing_zeros)+shift,i+1])
+plt.plot(rec_signal[int(fs*leading_zeros)+5000:N-int(fs*trailing_zeros),0])
 #plt.ylim(-0.1,0.1)
-#plt.show()
+plt.show()
 delta_t[i] = shift/fs
-
+'''
 # We're gonna hardcode i = 2 because correlate is not very good on this point
 i = 2
 correlation = signal.correlate(rec_signal[:,i+1], rec_signal[:,0], mode="full")
@@ -230,3 +233,5 @@ SAVE_FOLDER = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underw
 save_name = 'speed_of_sound_in_tank_2.png'
 plt.savefig(os.path.join( SAVE_FOLDER, save_name))
 #print(np.mean(c_minus_outlier))
+'''
+# %%

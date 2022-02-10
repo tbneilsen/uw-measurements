@@ -31,6 +31,7 @@ SAVE_FOLDER = "defaultoutput/2021-10"
 def main():
 
     max_modes = 1000
+    hw = 0.47
 
     OPT_FILE = 'orcafiles/orca_tank_opt.toml'
     test_env_files = ["svp_tank_air_0.5m.toml"] # hey make sure sound speed is right based on temperature!!!!!
@@ -42,17 +43,17 @@ def main():
         orca = ORCA(base_svp=full_file, base_opt = OPT_FILE)
 
         # set transmission loss source depth (in m)
-        src_depth = np.linspace(0.25,0.35,3)   
+        src_depth = hw/2   
         # set receiver depth(s) in m
-        rec_depth = np.linspace(0.25,0.35,3)
+        rec_depth = np.linspace(0,hw,200)
         # set the frequencies in Hz
-        freqs = [10000.0,30000.0,50000.0,80000.0,100000.0]#[10000.0,20000.0,30000.0,40000.0,50000.0,60000.0,70000.0,80000.0,90000.0,100000.0]
+        freqs = [71000]#[10000.0,20000.0,30000.0,40000.0,50000.0,60000.0,70000.0,80000.0,90000.0,100000.0]
 
         # set depths at which mode functions should be defined
         mode_depth = np.append(src_depth, rec_depth)
 
         # set ranges in m
-        ranges = np.linspace(0.3, 1.3, 15)
+        ranges = np.linspace(0, 1, 800)
         #ranges_mirror = np.append(-1*np.flip(ranges),ranges)
 
         # set the source depth for the tl calculation
