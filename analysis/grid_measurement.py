@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
 from ESAUdata import ESAUdata
@@ -55,14 +56,47 @@ path_chirp = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-09
 # Scan 6:
 # 50k-100k, 729 points
 
-num_scan_chirp = '' # the scan number in form of a string. NOTE the bad ones
+num_scan_chirp = '6' # the scan number in form of a string. NOTE the bad ones
 num_points_chirp = 729 # integer number of positions.
 
 path = path_chirp + num_scan_chirp
 num_points = num_points_chirp
 
-desire = [i for i in range(len(num_points))]
+desire = [i for i in range(num_points)]
 channels=[0,1]
 _,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path)
 N = int(fs*measurement_duration)
 _,_,_,_,rec_sig,_,_ = ESAUdata(path, desire, channels, N, N)
+plot = False
+Acal=(0.6, 2.14, depth/2)
+Rcal=(0.6, 2.06, depth/2)
+A,R,dd = ESAUpose(path, desire, plot, Acal, Rcal)
+#%%
+chirp_grid = np.zeros((27,27))
+for i in range(27):
+    for j in range(27):
+        chirp_grid[i,j] = 27*j + i
+chirp_grid = chirp_grid.astype('int')
+comp_array = [3,12,21]
+for i in chirp_grid[3,comp_array]:
+    print('Aegir: ' + str(A[i]))
+for i in chirp_grid[3,comp_array]:
+    print('Ran: ' + str(R[i]))
+for i in chirp_grid[3,comp_array]:
+    print('Range: ' + str(dd[i]))
+# %%
+import sys
+sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/python-general-signal-processing/byuarglib/byuarglib')
+from autospec import autospec
+ns = 2**15
+unitflag = 0
+pref = 1e-6
+Gxx = np.zeros((ns//2,len(desire)))
+#OASPL = np.zeros(len(desire))
+_, f, _ = autospec(rec_sig, fs, ns, N, unitflag, pref)
+for i in desire:
+    Gxx[:,i], _, _ = autospec(rec_sig[:,i], fs, ns, N, unitflag, pref)
+
+start_freq = 10000
+end_freq = 100000
+rel_Gxx_level, freq_band = freqVsRelTLwithAutospec(Gxx,f,start_freq,end_freq)
