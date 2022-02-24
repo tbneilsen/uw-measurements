@@ -38,9 +38,9 @@ def freqVsRelTLwithAutospec(Gxx,f,start_freq = 0,end_freq = 0):
 
     import numpy as np
 
-    rel_Gxx_level = np.zeros((len(Gxx[:,0]),len(Gxx[0,:]) - 1)) # making empty array
-    for i in range(len(Gxx[0]) - 1):
-        rel_Gxx_level[:,i] = 10*np.log10(Gxx[:,i+1]/Gxx[:,0])  # filling it with the relative TL relative to the first position
+    rel_Gxx_level = np.zeros((len(Gxx[:,0]),len(Gxx[0,:]))) # making empty array
+    for i in range(len(Gxx[0])):
+        rel_Gxx_level[:,i] = 10*np.log10(Gxx[:,i]/Gxx[:,0])  # filling it with the relative TL relative to the first position
 
     def findFreqIndex(f_array,freq): # function that finds the closest index to a desired frequency
         adjust_array = abs(f_array - freq)

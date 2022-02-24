@@ -84,19 +84,31 @@ for i in chirp_grid[3,comp_array]:
     print('Ran: ' + str(R[i]))
 for i in chirp_grid[3,comp_array]:
     print('Range: ' + str(dd[i]))
-# %%
+## %%
 import sys
 sys.path.append('/home/byu.local/sh747/underwater/scott-hollingsworth/codes/python-general-signal-processing/byuarglib/byuarglib')
 from autospec import autospec
 ns = 2**15
 unitflag = 0
 pref = 1e-6
-Gxx = np.zeros((ns//2,len(desire)))
+Gxx = np.zeros((ns//2,3))
 #OASPL = np.zeros(len(desire))
 _, f, _ = autospec(rec_sig, fs, ns, N, unitflag, pref)
-for i in desire:
-    Gxx[:,i], _, _ = autospec(rec_sig[:,i], fs, ns, N, unitflag, pref)
+for i,ii in enumerate(chirp_grid[3,comp_array]):
+    Gxx[:,i], _, _ = autospec(rec_sig[:,ii], fs, ns, N, unitflag, pref)
 
-start_freq = 10000
+from freq_vs_rel_TL_using_autospec import freqVsRelTLwithAutospec
+start_freq = 50000
 end_freq = 100000
 rel_Gxx_level, freq_band = freqVsRelTLwithAutospec(Gxx,f,start_freq,end_freq)
+save_path = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2022-02/'
+re = str(round(dd[chirp_grid[3,comp_array[0]]],2)) + 'm'
+for i,ii in enumerate(chirp_grid[3,comp_array]):
+    filename = 'frequency_at_' + str(round(dd[ii],2)) + 'm_re_' + re + '.jpg'
+    plt.figure()
+    plt.plot(freq_band,rel_Gxx_level[:,i])
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Amplitude')
+    plt.title('TL vs. Frequency at ' + str(round(dd[ii],2)) + '\n' + 're ' + re)
+    plt.savefig(save_path + filename)
+# %%
