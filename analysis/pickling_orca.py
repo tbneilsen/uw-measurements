@@ -16,8 +16,8 @@ SVP_FOLDER = "orcafiles"
 max_modes = 1000
 
 OPT_FILE = 'orcafiles/orca_tank_opt.toml'
-test_env_files = ['svp_tank_air_0.191m.toml','svp_tank_air_0.209m.toml','svp_tank_air_0.242m.toml','svp_tank_air_0.4m.toml','svp_tank_air_0.45m.toml','svp_tank_air_0.47m.toml','svp_tank_air_0.5m.toml','svp_tank_air_0.55m.toml','svp_tank_air_0.6m.toml','svp_tank_air_0.509m.toml','svp_tank_air_0.519m.toml']
-dict_to_be_pickled = {}
+test_env_files = ['svp_tank_air_0.47m.toml']
+
 
 for testfile in test_env_files:
     water_level = testfile.lstrip('svp_tank_air_')
@@ -28,16 +28,16 @@ for testfile in test_env_files:
 
     logger.info(f"Telling ORCA to load {full_file}")
     orca = ORCA(base_svp=full_file, base_opt = OPT_FILE)
-
-    # set transmission loss source depth (in m)
-    off_top = 0.01 # take 1 cm off the top and bottom for the source and receiver depths
-    src_depth = np.linspace(off_top ,water_level - off_top, 481)   # this has 1 mm seperation if the depth is 0.5 meters. Also halfway is always included!
+    # water depth
+    hw = 0.47 # m
+    # set source depth(s) in m
+    src_depth = np.array([hw/2])
     # set receiver depth(s) in m
-    rec_depth = np.linspace(off_top ,water_level - off_top, 481) # same as src_depth array
+    rec_depth = np.array([hw/2])
     # set ranges in m
-    ranges = np.linspace(0.01, 3, 2991) # 10 cm to 3 meters with 1 mm seperation
+    ranges = np.linspace(0.1, 1.6, 150) # same as several measurements with sine waves including 2022-02-24
     # set the frequencies in Hz
-    freqs = np.linspace(5000.0,10000.0,5001)  # 1 kHz to 5 kHz with df of 1 Hz 
+    freqs = np.array([71000.0,82000.0,100000.0,115000.0,133000.0,200000.0])  # same as several measurements with sine waves including 2022-02-24
     # set depths at which mode functions should be defined
     mode_depth = np.append(src_depth, rec_depth)
     # set the source depth for the tl calculation
@@ -58,10 +58,17 @@ for testfile in test_env_files:
     tl = uwlib.tl.calc_tl_from_orca(
         orca, freqs, ranges, src_depth, rec_depth,
         )
-    dict_to_be_pickled.update({str(water_level)+' m':{'src_depth':src_depth,'rec_depth':rec_depth,'ranges':ranges,'freqs':freqs,'tl':tl}})
     # tl[src_depth, rec_depth, ranges, freqs]
-  
-filename = 'pickled_orca_1k_5k'
-outfile = open(filename,'wb')
-pickle.dump(dict_to_be_pickled,outfile)
+    orca_dict = {
+        'src_depth':src_depth, 
+        'rec_depth': rec_depth, 
+        'ranges': ranges,
+        'frequency':freqs,
+        'transmission loss':tl
+        }
+    # tl[src_depth, rec_depth, ranges, freqs]
+save_path = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2022-02/'
+filename = 'modeling_paper_orca_pickle'
+outfile = open(save_path+filename,'wb')
+pickle.dump(orca_dict,outfile)
 outfile.close()
