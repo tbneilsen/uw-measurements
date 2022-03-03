@@ -75,7 +75,7 @@ def binfileload(path, IDname=None, IDnum=None, CHnum=None, N=-1, Nstart=0):
         # convert Nstart to bytes instead of bits
         Nstart = Nstart * 4
 
-        # move the binary file to where we want to start reading
+        # move the binary file to where we want to start  reading
         binary_file.seek(Nstart)
 
         # now, we get the handle for the actual data that's left
