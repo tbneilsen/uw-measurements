@@ -85,7 +85,7 @@ path19 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B
 path20 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan9' # 133 kHz 150 points long
 path21 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-11-12B/2021-11-12_scan10' # 200 kHz 150 points long
 
-path_used = path16
+path_used = path17
 freqs = [100000.0]
 desire = [i for i in range(150)]
 channel = [0,1]
@@ -267,14 +267,14 @@ def main():
                     plt.plot(ranges,rel_TL, label = 'measured')#"true TL re " + str(round(ranges[0],3)) + ' m @ ' + str(f) + " Hz") # true Relative TL
                     plt.xlabel('Range, m')
                     plt.ylabel("TL, dB re "+str(round(dd[0],3))+" m") # change re depending on what it's relative to
-                    '''
+                    
                     plt.title('Range vs Relative Transmission Loss\
                         \nReciever Depth: ' + str(rec_depth[0]) + ' m' +\
                         '\nFrequency: ' + str(f) + ' Hz' +\
                         '\n' + testfile[:-5] +\
                         '\n Modes: ' + str(nmode)) 
-                    '''
-                    plt.title('Short Sine Wave Time Gated \n '+str(f)+' Hz')
+                    
+                    # plt.title('Short Sine Wave Time Gated \n '+str(f)+' Hz')
                     plt.grid()
                     plt.legend()
                     plt.gcf().tight_layout()
@@ -282,7 +282,7 @@ def main():
                     # when creating the save name variable you must specify if you are plotting just ORCA, just data, or comparing the two
                     # orca_{etc} or data_{etc} or comp_{etc} 
                     # ALSO note the rtl instead of tl in the save_name!! When plot_rel_tl = False it is just 'tl'
-                    save_name = 'comp_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + 'short_gate.png'
+                    save_name = 'comp_bellhop_' + 'range_vs_rtl_' + '@freq' + str(f) + 'Hz' + '_' + testfile[:-5] + 'short_gate.png'
                     #plt.savefig(os.path.join( SAVE_FOLDER, save_name))
                     plt.savefig(os.path.join( SAVE_FOLDER, save_name))
             if depth_vs_TL: #if plotting rec_depth vs. TL
