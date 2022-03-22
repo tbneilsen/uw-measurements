@@ -140,7 +140,7 @@ def readLogFile(filename,location):
             index += len(substrF)     
                              
                               
-       #Find bandwidth
+    #Find bandwidth
     substrBmin = "from " 
     substrBmax = "to "                 
     for line in mylines:
@@ -161,8 +161,6 @@ def readLogFile(filename,location):
             
                fmin = line[index+len(substrBmin):endIndex]                  
                
-            # prev = index + len(substrBmin)       
-            # index += len(substrBmin)     
     bandwidth = fmin + "-" + fmax + " Hz"
 
 
