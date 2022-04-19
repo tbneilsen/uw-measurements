@@ -6,7 +6,7 @@ Created on Wed May 19 14:15:41 2021
 """
 #%%
 
-def calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end):
+def calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end,desire):
     '''
     This function calculates the relative Transmission Loss in the Tank.
     Right now it only works for very specific measurements, but hopefully in the future will be a bit more versatile.
@@ -57,7 +57,7 @@ def calcRelativeTransmissionLoss(rec_sig,rec_start,rec_end):
 
     return rel_TL
 
-
+'''
 from ESAUdata import ESAUdata
 from ESAUpose import ESAUpose
 from readLogFile import readLogFile
@@ -72,14 +72,14 @@ path5 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-05-20/2
 path6 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan' # 100 kHz, 100 points, signal on longer
 path7 = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-07-09/2021-07-09_scan1' # 100 kHz, 100 points, signal on longer, longer settling time
 path_used = path7
-desire = [i for i in range(100)]
+desire = [i for i in range(150)]
 channel = [0,1]
-c = 1478
+c = 1486.549
 
 
 _,_,_,fs,leading,signal_duration,trailing,measurement_duration,depth,_,_,_,_,_,_ = readLogFile('/ID000_001log.txt',path_used)
 A, R, dd = ESAUpose(path_used,desire)
-'''
+
 acoustic_center_offset = 0.0092
 dd = dd + 2*acoustic_center_offset
 for i in desire:
@@ -89,7 +89,7 @@ for i in desire:
     R[i][1] = R[i][1] - acoustic_center_offset
     A[i] = tuple(A[i])
     R[i] = tuple(R[i])
-'''
+
 tshort = np.zeros(len(desire))
 tside = np.zeros(len(desire))
 tdirect = np.zeros(len(desire))
@@ -115,7 +115,7 @@ rec_end = rec_end.astype('int')
 t = np.linspace(0,(N-1)/fs,N)
 
 
-'''
+
 #for i in desire:
 plt.figure()
 plt.plot(t[rec_start[0]:rec_end[0]],gated_rec_sig[rec_start[0]:rec_end[0],0], label = str(np.round(dd[0],4)) + ' m')
@@ -128,5 +128,6 @@ rel_TL = calcRelativeTransmissionLoss(gated_rec_sig,rec_start,rec_end)
 plt.figure()
 plt.plot(dd,rel_TL)
 plt.show()
+
 '''
 # %%

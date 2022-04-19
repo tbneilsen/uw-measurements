@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#%%
 """
 Created on Wed May 26 16:47:56 2021
 
@@ -144,47 +144,30 @@ def calc_sound_speed_tank(fs,rec_signal,signal_length_plus_zeros,rec_y_position,
 
 import numpy as np
 from ESAUdata import ESAUdata
+from ESAUpose import ESAUpose
 from readLogFile import readLogFile
 
-path = 'D:/2021-05-20_scan2'
-yRec = np.zeros(100)
-for i in range(10):
-    for j in range(10):
-        _,_,_,fs,signalDuration,_,_,_,_,_,yRec[i*10+j],_ = readLogFile(f'/ID0{i}{j}_001log.txt',path)
+path = '/home/byu.local/sh747/underwater/uw-measurements-tank/2021/2021-08-06B/2021-08-06_scan1' # 16 points
+num_points = 16
+_,_,_,fs,_,_,_,measurementDuration,_,_,_,_,_,_,_ = readLogFile(f'/ID000_001log.txt',path)
 
-desire = [i for i in range(100)]
+'''
+yRec = np.zeros(num_points)
+for i in range(2):
+    if i==0:
+        for j in range(10):
+            _,_,_,fs,_,_,_,measurementDuration,_,_,_,_,_,yRec[i*10+j],_ = readLogFile(f'/ID0{i}{j}_001log.txt',path)
+    if i==1:
+        for j in range(6):
+            _,_,_,fs,_,_,_,measurementDuration,_,_,_,_,_,yRec[i*10+j],_ = readLogFile(f'/ID0{i}{j}_001log.txt',path)
+'''
+
+desire = [i for i in range(num_points)]
 channels = [1]
-signal_length_plus_zeros = 1.0 + signalDuration
+_,_,dd = ESAUpose(path,desire)
+_,_,_,_,rec_signal,_,_ = ESAUdata(path,desire,channels,fs*measurementDuration)
 
-_,_,_,_,rec_signal,_,_ = ESAUdata(path,desire,channels,fs*signal_length_plus_zeros)
-
-c = calc_sound_speed_tank(fs, rec_signal, signal_length_plus_zeros, yRec)
+c = calc_sound_speed_tank(fs, rec_signal, measurementDuration, dd)
 
 print(c)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# %%
