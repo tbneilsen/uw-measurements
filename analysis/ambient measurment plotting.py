@@ -81,40 +81,49 @@ def binfileload(path, IDname=None, IDnum=None, CHnum=None, N=-1, Nstart=0):
 def PlotAmbientNoise(date,scannum,idnum,fs):
     import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib
     import sys
     sys.path.insert(1,'C:/Users/khopp/UW-Research-Files/byuarglib')
     import byuarglib as byu
     params = {'legend.fontsize': 15,
-              'figure.figsize': (15, 10),
-             'axes.labelsize': 24,
-             'axes.titlesize':28,
+              'figure.figsize': (20, 15),
+             'axes.labelsize': 12,
+             'axes.titlesize':15,
              'axes.titleweight':'bold',
-             'xtick.labelsize':'xx-large',
-             'ytick.labelsize':'xx-large',
-             'lines.linewidth':2}
-    pylab.rcParams.update(params)
+             'xtick.labelsize':'large',
+             'ytick.labelsize':'large',
+             'lines.linewidth':1}
+    matplotlib.rcParams.update(params)
 
-    scan = '_scan'+scannum
-    path = 'C:/Users/khopp/Box/UW Data/Ambient Measurements/'+date+'/'+date+scan
+    scan = '_Scan'+scannum
+    path = 'C:/Users/khopp/Box/Underwater Measurements/'+date+'/'+date+scan
     signal=binfileload(path + '/' + 'ID001_00' + idnum + '.bin')
 
-    pref = 1e-6
+    pref = 1e-6 # 1 microvolt
     GXX, f, OASPL = byu.autospec(signal,fs,2**13,len(signal),pref)
     GXX_dB = 20*np.log10(np.abs(GXX/pref))
     plt.semilogx(f,GXX_dB)
-    plt.xlim((10,fs/2))
-    plt.xlabel('Frequency Hz')
-    plt.ylabel('dB')
-    plt.title('Ambient Power Spectral Density \n Panels Water Depth 0.24 m')
-    plt.grid(True)
-    
-    return GXX,f
+    return f,GXX
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 fs=600000
-
+pref = 1e-6
+numsignals = 10
 plt.figure()
-for x in range(0,10,1):
-    PlotAmbientNoise('2022-03-25','0',f'{x}',fs)
+for x in range(0,numsignals,1):
+    f,GXX = PlotAmbientNoise('2022-03-25','0',f'{x}',fs)
+    if x==0: 
+        GXX_all = np.zeros([GXX.size])
+    GXX_all+=GXX
+    
+GXX_mean = 20*np.log10(np.abs(GXX_all/(numsignals*pref)))
+plt.semilogx(f,GXX_mean,"-k",label="Mean")
+plt.xlim((10,fs/2))
+plt.xlabel('Frequency Hz')
+plt.ylabel('Power Spectral Density Level dB re 1 microVolt')
+plt.title('Ambient Power Spectral Density \n Panels Water Depth 0.24 m')
+plt.grid(True)
+plt.legend()
+plt.savefig("C:/Users/khopp/OneDrive/Documents/ambient1.jpg")
