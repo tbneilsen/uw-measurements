@@ -16,28 +16,25 @@ SVP_FOLDER = "orcafiles"
 max_modes = 1000
 
 OPT_FILE = 'orcafiles/orca_tank_opt.toml'
-test_env_files = ['svp_tank_air_0.47m.toml']
+test_env_files = ['svp_tank_air_0.24m.toml']
 
 
 for testfile in test_env_files:
-    water_level = testfile.lstrip('svp_tank_air_')
-    water_level = water_level.rstrip('m.toml')
-    water_level = float(water_level)
     
     full_file = os.path.join(SVP_FOLDER, testfile)
 
     logger.info(f"Telling ORCA to load {full_file}")
     orca = ORCA(base_svp=full_file, base_opt = OPT_FILE)
     # water depth
-    hw = 0.47 # m
+    hw = 0.24 # m
     # set source depth(s) in m
-    src_depth = np.array([hw/2])
+    src_depth = np.array([hw/2,hw-0.16])
     # set receiver depth(s) in m
-    rec_depth = np.array([hw/2])
+    rec_depth = np.array([hw-0.08,hw/2])
     # set ranges in m
-    ranges = np.linspace(0.1, 1.6, 150) # same as several measurements with sine waves including 2022-02-24
+    ranges = np.linspace(0.1, 1.6, 300) 
     # set the frequencies in Hz
-    freqs = np.array([71000.0,82000.0,100000.0,115000.0,133000.0,200000.0])  # same as several measurements with sine waves including 2022-02-24
+    freqs = np.array([10000.0,32000.0,53000.0,71000.0,82000.0,100000.0,115000.0,133000.0,200000.0])
     # set depths at which mode functions should be defined
     mode_depth = np.append(src_depth, rec_depth)
     # set the source depth for the tl calculation
@@ -67,8 +64,8 @@ for testfile in test_env_files:
         'transmission loss':tl
         }
     # tl[src_depth, rec_depth, ranges, freqs]
-save_path = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2022-02/'
-filename = 'modeling_paper_orca_pickle'
+save_path = '/home/byu.local/sh747/underwater/scott-hollingsworth/codes/underwater-measurements/analysis/defaultoutput/2022-05/'
+filename = 'modpap_orca_reltl_hw_0.24'
 outfile = open(save_path+filename,'wb')
 pickle.dump(orca_dict,outfile)
 outfile.close()
