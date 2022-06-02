@@ -142,27 +142,29 @@ def readLogFile(filename,location):
                               
     #Find bandwidth
     substrBmin = "from " 
-    substrBmax = "to"                 
-    for line in mylines:          
-        index = 0                 
-        prev = 0                  
-        while index < len(line):   
-            index = line.find(substrBmin, index) 
-            if index != 0 and index != -1:
-                endIndex = line.find('.00')
-                fmin = line[index+len(substrBmin):endIndex]
-                nextIndex = line.find(substrBmax,index)
-                endIndex2 = line.index('.00',nextIndex)
-                fmax = line[nextIndex+3:endIndex2]
-                break
-            if index == -1:           
+    substrBmax = "to "                 
+    for line in mylines:
+        index= 0
+        prev = 0   
+    
+        if substrBmin in line:
+               a = line.find(substrBmin, index)
+               endIndex = line.find('.00')
+               fmin = line[a+len(substrBmin):endIndex]
+               nextIndex = line.find(substrBmax,index)
+               endIndex2 = line.index('.00',nextIndex)
+               fmax = line[nextIndex+3:endIndex2]
+               break
+               if index == -1:           
                 break                  
+               index += 1
             
-            fmin = line[index+len(substrBmin):endIndex]                  
+               fmin = line[index+len(substrBmin):endIndex]                  
                
-            prev = index + len(substrBmin)       
-            index += len(substrBmin)     
-    bandwidth = fmin + "-" + fmax + " Hz"                      
+    bandwidth = fmin + "-" + fmax + " Hz"
+
+
+                  
 
     #Find water temperature
     substrT = "Temp: "                  
